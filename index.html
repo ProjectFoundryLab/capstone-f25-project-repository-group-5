@@ -19,6 +19,28 @@
     </form>
     <a href="#" class="forgot-password">Forgot password?</a>
   </div>
+
+  <script>
+    // Mock credentials for now
+    const validUser = "admin";
+    const validPass = "password123";
+
+    const form = document.querySelector("form");
+    form.addEventListener("submit", function (e) {
+    e.preventDefault(); // Prevent form reloading page
+
+    const user = document.querySelector('input[type="text"]').value;
+    const pass = document.querySelector('input[type="password"]').value;
+
+    if (user === validUser && pass === validPass) {
+      alert("✅ Login successful!");
+      window.location.href = "dashboard.html"; // redirect to dashboard page
+    } else {
+      alert("❌ Invalid username or password");
+    }
+   });
+  </script>
+
 </body>
 </html>
 
