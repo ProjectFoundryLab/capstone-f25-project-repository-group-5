@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "sqldatabasetest-473020",
-    "firebase use --add": "aac-prototype"
-  },
-  "targets": {},
-  "etags": {}
-}
