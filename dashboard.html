@@ -22,5 +22,33 @@
 
   <a href="index.html">Logout</a>
 
+<br><br>
+  <a href="index.html">Logout</a>
+
+  <script>
+    const API_BASE = "https://ingest-service-ejguy6ecgq-ul.a.run.app"; // Cloud Run URL
+
+    // --- Update a bed's occupancy ---
+    async function updateBed() {
+      const bedNum = document.getElementById("bedNumberUpdate").value;
+      const status = document.getElementById("bedStatus").value;
+      const patient = document.getElementById("patientId").value;
+
+      if (!bedNum || !status) {
+        alert("Please enter both bed number and status.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/beds/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bed_number: bedNum,
+            bed_status: status,
+            patient_id: patient
+          })
+        });
+
 </body>
 </html>
