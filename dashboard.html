@@ -9,6 +9,18 @@
   <h1>Welcome to MED Bed System Dashboard</h1>
   <p>You are now logged in (mock).</p>
 
+<h3>Search Bed</h3>
+  <input id="bedNumber" placeholder="Bed Number">
+  <button onclick="getBed()">Search</button>
+  <pre id="bedData"></pre>
+  
+<h3>Update Bed Status</h3>
+  <input id="bedNumberUpdate" placeholder="Bed Number">
+  <input id="bedStatus" placeholder="Status (occupied/available)">
+  <input id="patientId" placeholder="Patient ID (optional)">
+  <button onclick="updateBed()">Update</button>
+
   <a href="index.html">Logout</a>
+
 </body>
 </html>
