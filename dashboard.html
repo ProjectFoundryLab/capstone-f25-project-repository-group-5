@@ -1,52 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard</title>
 </head>
 <body>
-  <h1>Welcome to MED Bed System Dashboard</h1>
-  <p>You are now logged in (mock).</p>
+  <h1>MED Bed System Dashboard</h1>
 
-<h3>Search Bed</h3>
-  <input id="bedNumber" placeholder="Bed Number">
-  <button onclick="getBed()">Search</button>
-  <pre id="bedData"></pre>
-  
-<h3>Update Bed Status</h3>
-  <input id="bedNumberUpdate" placeholder="Bed Number">
-  <input id="bedStatus" placeholder="Status (occupied/available)">
-  <input id="patientId" placeholder="Patient ID (optional)">
-  <button onclick="updateBed()">Update</button>
+  <!-- Bed selection dropdown -->
+  <label for="bedSelect">Select Bed:</label>
+  <select id="bedSelect"></select>
 
-<br><br>
-  <a href="index.html">Logout</a>
+  <!-- Status dropdown -->
+  <label for="statusSelect">Update Status:</label>
+  <select id="statusSelect">
+    <option value="available">Available</option>
+    <option value="occupied">Occupied</option>
+    <option value="reserved">Reserved</option>
+    <option value="transferring">Transferring</option>
+    <option value="cleaning">Cleaning</option>
+  </select>
+
+  <button id="updateBtn">Update Bed</button>
+
+  <p id="result"></p>
 
   <script>
-    const API_BASE = "https://ingest-service-ejguy6ecgq-ul.a.run.app"; // Cloud Run URL
+    const API_BASE = "https://ingest-service-ejguy6ecgq-ul.a.run.app";
 
-    // --- Update a bed's occupancy ---
-    async function updateBed() {
-      const bedNum = document.getElementById("bedNumberUpdate").value;
-      const status = document.getElementById("bedStatus").value;
-      const patient = document.getElementById("patientId").value;
+    async function loadBeds() {
+      const response = await fetch(`${API_BASE}/wards`);
+      const wards = await response.json();
 
-      if (!bedNum || !status) {
-        alert("Please enter both bed number and status.");
-        return;
-      }
+      const bedSelect = document.getElementById("bedSelect");
+      bedSelect.innerHTML = "";
 
-      try {
-        const res = await fetch(`${API_BASE}/beds/update`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bed_number: bedNum,
-            bed_status: status,
-            patient_id: patient
-          })
-        });
+      // Example: generate beds from known ward structure
+      const allBeds = [];
+      wards.forEach(w => {
+        const count = w.num_of_total_beds || 0;
+        for (let i = 1; i <= count; i++) {
+          const label = `${w.name} - Bed ${i}`;
+          const value = `${w.ward_id}-${i}`;
+          allBeds.push({ label, value });
+        }
+      });
 
+      allBeds.forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.value;
+        opt.textContent = b.label;
+        bedSelect.appendChild(opt);
+      });
+    }
+
+    document.getElementById("updateBtn").addEventListener("click", async () => {
+      const [ward_id, bed_num] = document.getElementById("bedSelect").value.split("-");
+      const status = document.getElementById("statusSelect").value;
+
+      const res = await fetch(`${API_BASE}/beds/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bed_number: bed_num,
+          bed_status: status,
+          patient_id: null
+        })
+      });
+
+      const text = await res.text();
+      document.getElementById("result").textContent = text;
+    });
+
+    loadBeds();
+  </script>
 </body>
 </html>
