@@ -20,26 +20,53 @@
     <a href="#" class="forgot-password">Forgot password?</a>
   </div>
 
-  <script>
-    // Mock credentials for now
-    const validUser = "admin";
-    const validPass = "password123";
+  <script type="module">
+    // --- Firebase SDK imports ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-    const form = document.querySelector("form");
-    form.addEventListener("submit", function (e) {
-    e.preventDefault(); // Prevent form reloading page
+    // --- Your Firebase Config (KEEP THIS) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
+      authDomain: "sqldatabasetest-473020.firebaseapp.com",
+      projectId: "sqldatabasetest-473020",
+      storageBucket: "sqldatabasetest-473020.firebasestorage.app",
+      messagingSenderId: "725327609427",
+      appId: "1:725327609427:web:989af1506e170afc0650a6",
+      measurementId: "G-WCZ3JSGH71"
+      };
 
-    const user = document.querySelector('input[type="text"]').value;
-    const pass = document.querySelector('input[type="password"]').value;
+      // --- Initialize Firebase ---
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      const auth = getAuth(app);
 
-    if (user === validUser && pass === validPass) {
-      alert("✅ Login successful!");
-      window.location.href = "dashboard.html"; // redirect to dashboard page
-    } else {
-      alert("❌ Invalid username or password");
-    }
-   });
-  </script>
+      // --- LOGIN FORM HANDLING ---
+      const form = document.querySelector("form");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+      const email = document.querySelector('input[type="text"]').value;
+      const password = document.querySelector('input[type="password"]').value;
+
+      try {
+        // Firebase login
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+        alert("✅ Login successful: " + userCredential.user.email);
+
+        // Redirect to dashboard page
+        window.location.href = "dashboard.html";
+
+      } catch (error) {
+        // Show error message from Firebase
+        alert("❌ Login failed: " + error.message);
+      }
+     });
+    </script>
+
 
 </body>
 </html>
