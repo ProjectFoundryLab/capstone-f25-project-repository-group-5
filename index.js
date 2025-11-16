@@ -8,16 +8,56 @@ const mysql = require("mysql2/promise");
 const app = express();
 app.use(express.json());
 
-const cors = require('cors');
+const cors = require("cors");
 app.use(cors());
-
 
 const storage = new Storage();
 
+// ------------------------------
+// 🔧 GLOBAL NULL SANITIZER
+// ------------------------------
+function toNull(v) {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "string" && v.trim() === "") return null;
+  if (v === "NULL" || v === "null") return null;
+  return v;
+}
+
+// ------------------------------
+// 🔧 INT SANITIZER (blank → NULL)
+// ------------------------------
+function toIntOrNull(v) {
+  v = toNull(v);
+  if (v === null) return null;
+  const n = parseInt(v, 10);
+  return isNaN(n) ? null : n;
+}
+
+// ------------------------------
+// 🔧 DATE NORMALIZER (MM/DD/YYYY → YYYY-MM-DD)
+// ------------------------------
+function fixDate(v) {
+  if (!v || v.trim() === "") return null;
+  if (v.includes("/")) {
+    const [m, d, y] = v.split("/");
+    if (m && d && y) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return v;
+}
+
+// --- FIXED ENV HANDLING ---
 const CLOUD_SQL_CONNECTION_NAME = process.env.CLOUD_SQL_CONNECTION_NAME;
-const DB_USER = process.env.DB_USER || "root";
-const DB_PASS = process.env.DB_PASS || "";
-const DB_NAME = process.env.DB_NAME || "BedTest";
+
+if (!process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
+  console.error("❌ FATAL: Missing required DB environment variables.");
+  process.exit(1);
+}
+
+const DB_USER = process.env.DB_USER;
+const DB_PASS = process.env.DB_PASS;
+const DB_NAME = process.env.DB_NAME;
+
+console.log(`🔌 Using DB user: ${DB_USER}`);
 
 // --- MySQL connection helper ---
 async function getDbConnection() {
@@ -29,7 +69,9 @@ async function getDbConnection() {
   });
 }
 
-// --- GCS → MySQL CSV processing (Eventarc Trigger) ---
+// ===================================================================
+// 🔥 GCS → MySQL CSV processing (Eventarc Trigger)
+// ===================================================================
 async function processCsv(bucketName, fileName) {
   const bucket = storage.bucket(bucketName);
   const file = bucket.file(fileName);
@@ -43,19 +85,208 @@ async function processCsv(bucketName, fileName) {
   try {
     await conn.beginTransaction();
 
-    for (const r of records) {
-      const { patient_id, first_name, last_name, admission_status, medical_record_number } = r;
+    // ------------------------------
+    // PATIENTS
+    // ------------------------------
+    if (records[0]?.patient_id && records[0]?.first_name !== undefined) {
+      console.log("Detected patients.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO patients (
+            patient_id, first_name, last_name, date_of_birth, gender,
+            medical_record_number, admission_status, priority_level, admit_reason
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            first_name = VALUES(first_name),
+            last_name = VALUES(last_name),
+            date_of_birth = VALUES(date_of_birth),
+            gender = VALUES(gender),
+            medical_record_number = VALUES(medical_record_number),
+            admission_status = VALUES(admission_status),
+            priority_level = VALUES(priority_level),
+            admit_reason = VALUES(admit_reason)`,
+          [
+            toIntOrNull(r.patient_id),
+            toNull(r.first_name),
+            toNull(r.last_name),
+            fixDate(r.date_of_birth),
+            toNull(r.gender),
+            toNull(r.medical_record_number),
+            toNull(r.admission_status),
+            toIntOrNull(r.priority_level),
+            toNull(r.admit_reason),
+          ]
+        );
+      }
+    }
 
-      await conn.query(
-        `INSERT INTO patients (patient_id, first_name, last_name, admission_status, medical_record_number)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-           first_name = VALUES(first_name),
-           last_name = VALUES(last_name),
-           admission_status = VALUES(admission_status),
-           medical_record_number = VALUES(medical_record_number)`,
-        [patient_id, first_name, last_name, admission_status, medical_record_number]
-      );
+    // ------------------------------
+    // WARDS
+    // ------------------------------
+    else if (records[0]?.ward_id && records[0]?.name !== undefined) {
+      console.log("Detected wards.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO wards (ward_id, name, type, num_of_total_beds, building, floor_number)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             name = VALUES(name),
+             type = VALUES(type),
+             num_of_total_beds = VALUES(num_of_total_beds),
+             building = VALUES(building),
+             floor_number = VALUES(floor_number)`,
+          [
+            toIntOrNull(r.ward_id),
+            toNull(r.name),
+            toNull(r.type),
+            toIntOrNull(r.num_of_total_beds),
+            toNull(r.building),
+            toIntOrNull(r.floor_number),
+          ]
+        );
+      }
+    }
+
+    // ------------------------------
+    // BEDS
+    // ------------------------------
+    else if (records[0]?.bed_id && records[0]?.bed_number !== undefined) {
+      console.log("Detected beds.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO beds (bed_id, ward_id, bed_number, bed_status, bed_type, patient_id)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             ward_id = VALUES(ward_id),
+             bed_number = VALUES(bed_number),
+             bed_status = VALUES(bed_status),
+             bed_type = VALUES(bed_type),
+             patient_id = VALUES(patient_id)`,
+          [
+            toIntOrNull(r.bed_id),
+            toIntOrNull(r.ward_id),
+            toNull(r.bed_number),
+            toNull(r.bed_status),
+            toNull(r.bed_type),
+            toIntOrNull(r.patient_id),
+          ]
+        );
+      }
+    }
+
+    // ------------------------------
+    // ADMISSIONS
+    // ------------------------------
+    else if (records[0]?.admission_id && records[0]?.admission_time !== undefined) {
+      console.log("Detected admissions.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO admissions (
+            admission_id, patient_id, ward_id, bed_id,
+            admission_time, discharge_time, admission_reason,
+            disposition, transfer_from, transfer_to
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            patient_id = VALUES(patient_id),
+            ward_id = VALUES(ward_id),
+            bed_id = VALUES(bed_id),
+            admission_time = VALUES(admission_time),
+            discharge_time = VALUES(discharge_time),
+            admission_reason = VALUES(admission_reason),
+            disposition = VALUES(disposition),
+            transfer_from = VALUES(transfer_from),
+            transfer_to = VALUES(transfer_to)`,
+          [
+            toIntOrNull(r.admission_id),
+            toIntOrNull(r.patient_id),
+            toIntOrNull(r.ward_id),
+            toIntOrNull(r.bed_id),
+            fixDate(r.admission_time),
+            fixDate(r.discharge_time),
+            toNull(r.admission_reason),
+            toNull(r.disposition),
+            toIntOrNull(r.transfer_from),
+            toIntOrNull(r.transfer_to),
+          ]
+        );
+      }
+    }
+
+    // ------------------------------
+    // FORECASTS
+    // ------------------------------
+    else if (records[0]?.forecast_id && records[0]?.ward_id !== undefined) {
+      console.log("Detected forecasts.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO forecasts (
+            forecast_id, ward_id, time_horizon, predicted_occupancy,
+            predicted_demand, forecast_error, notes
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            ward_id = VALUES(ward_id),
+            time_horizon = VALUES(time_horizon),
+            predicted_occupancy = VALUES(predicted_occupancy),
+            predicted_demand = VALUES(predicted_demand),
+            forecast_error = VALUES(forecast_error),
+            notes = VALUES(notes)`,
+          [
+            toIntOrNull(r.forecast_id),
+            toIntOrNull(r.ward_id),
+            toNull(r.time_horizon),
+            toNull(r.predicted_occupancy),
+            toNull(r.predicted_demand),
+            toNull(r.forecast_error),
+            toNull(r.notes),
+          ]
+        );
+      }
+    }
+
+    // ------------------------------
+    // ROLES
+    // ------------------------------
+    else if (records[0]?.role_id) {
+      console.log("Detected roles.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO roles (role_id, role_name)
+           VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE role_name = VALUES(role_name)`,
+          [toIntOrNull(r.role_id), toNull(r.role_name)]
+        );
+      }
+    }
+
+    // ------------------------------
+    // USERS
+    // ------------------------------
+    else if (records[0]?.user_id) {
+      console.log("Detected users.csv");
+      for (const r of records) {
+        await conn.query(
+          `INSERT INTO users (user_id, username, password_hash, email, role_id, created_at, last_login)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             username = VALUES(username),
+             password_hash = VALUES(password_hash),
+             email = VALUES(email),
+             role_id = VALUES(role_id),
+             last_login = VALUES(last_login)`,
+          [
+            toIntOrNull(r.user_id),
+            toNull(r.username),
+            toNull(r.password_hash),
+            toNull(r.email),
+            toIntOrNull(r.role_id),
+            fixDate(r.created_at),
+            fixDate(r.last_login),
+          ]
+        );
+      }
     }
 
     await conn.commit();
@@ -69,7 +300,9 @@ async function processCsv(bucketName, fileName) {
   }
 }
 
-// --- Eventarc Trigger Endpoint ---
+// ================================================================
+// Eventarc trigger
+// ================================================================
 app.post("/", async (req, res) => {
   try {
     let payload = req.body;
@@ -92,16 +325,40 @@ app.post("/", async (req, res) => {
   }
 });
 
-// ===============================
-// Nurse Frontend API Endpoints
-// ===============================
-
-// --- Search for a bed by number (includes patient + ward info) ---
-app.get("/beds/:bedNumber", async (req, res) => {
-  const bedNumber = req.params.bedNumber;
+// ================================================================
+// Nurse Frontend API
+// ================================================================
+app.get("/beds", async (req, res) => {
   try {
     const conn = await getDbConnection();
+    const [rows] = await conn.query("SELECT * FROM beds");
+    await conn.end();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).send("Error fetching beds");
+  }
+});
 
+app.post("/beds/update", async (req, res) => {
+  const { bed_id, bed_status, patient_id } = req.body;
+  if (!bed_id) return res.status(400).send("Missing bed_id");
+
+  try {
+    const conn = await getDbConnection();
+    await conn.query(
+      "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
+      [bed_status, toIntOrNull(patient_id), bed_id]
+    );
+    await conn.end();
+    res.send("✅ Bed updated successfully");
+  } catch (err) {
+    res.status(500).send("Error updating bed");
+  }
+});
+
+app.get("/beds/:bedNumber", async (req, res) => {
+  try {
+    const conn = await getDbConnection();
     const [rows] = await conn.query(
       `SELECT b.bed_id, b.bed_number, b.bed_status, b.bed_type,
               w.name AS ward_name, w.floor_number, w.building,
@@ -110,46 +367,23 @@ app.get("/beds/:bedNumber", async (req, res) => {
        LEFT JOIN wards w ON b.ward_id = w.ward_id
        LEFT JOIN patients p ON b.patient_id = p.patient_id
        WHERE b.bed_number = ? LIMIT 1`,
-      [bedNumber]
+      [req.params.bedNumber]
     );
-
     await conn.end();
 
     if (rows.length === 0) return res.status(404).send("Bed not found");
     res.json(rows[0]);
   } catch (err) {
-    console.error("DB fetch error:", err);
-    res.status(500).send("Error fetching bed data");
+    res.status(500).send("Error fetching bed");
   }
 });
 
-// --- Update bed status or assign patient ---
-app.post("/beds/update", async (req, res) => {
-  const { bed_number, bed_status, patient_id } = req.body;
-  if (!bed_number) return res.status(400).send("Missing bed number");
-
-  try {
-    const conn = await getDbConnection();
-
-    await conn.query(
-      `UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_number = ?`,
-      [bed_status, patient_id || null, bed_number]
-    );
-
-    await conn.end();
-    res.send("✅ Bed status updated");
-  } catch (err) {
-    console.error("DB update error:", err);
-    res.status(500).send("Error updating bed status");
-  }
-});
-
-// --- Optional: Get all wards and their available bed counts ---
 app.get("/wards", async (req, res) => {
   try {
     const conn = await getDbConnection();
     const [rows] = await conn.query(`
-      SELECT w.ward_id, w.name, w.num_of_total_beds, COUNT(b.bed_id) AS beds_tracked,
+      SELECT w.ward_id, w.name, w.type, w.num_of_total_beds, w.building, w.floor_number,
+             COUNT(b.bed_id) AS beds_tracked,
              SUM(b.bed_status = 'available') AS available_beds
       FROM wards w
       LEFT JOIN beds b ON w.ward_id = b.ward_id
@@ -158,17 +392,13 @@ app.get("/wards", async (req, res) => {
     await conn.end();
     res.json(rows);
   } catch (err) {
-    console.error("Ward fetch error:", err);
-    res.status(500).send("Error fetching ward data");
+    res.status(500).send("Error fetching wards");
   }
 });
 
-// --- Health check ---
 app.get("/health", (req, res) => res.send("ok"));
 
-// --- Start server ---
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`✅ Server listening on port ${port}`);
 });
-
