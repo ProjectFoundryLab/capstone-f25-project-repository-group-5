@@ -64,7 +64,7 @@
         background: #004c95;
     }
 
-    .bed-info-box {
+    .bed-info-box, .patient-info-box {
         margin-top: 30px;
         background: #eef5ff;
         padding: 20px;
@@ -110,6 +110,23 @@
         <h3>Bed Details</h3>
         <p id="bedInfoContent">Loading…</p>
     </div>
+
+
+    <!-- ============================== -->
+    <!-- NEW PATIENT INFORMATION PANEL -->
+    <!-- ============================== -->
+    <h2 style="margin-top:40px;">Patient Details for Selected Bed</h2>
+
+    <div class="patient-info-box" id="patientInfo">
+        <h3>Patient Information</h3>
+        <p><strong>Patient ID:</strong> <span id="pi_id"></span></p>
+        <p><strong>Name:</strong> <span id="pi_name"></span></p>
+        <p><strong>Status:</strong> <span id="pi_status"></span></p>
+        <p><strong>Bed Status:</strong> <span id="pi_bed_status"></span></p>
+        <p><strong>Bed Type:</strong> <span id="pi_bed_type"></span></p>
+        <p><strong>Ward:</strong> <span id="pi_ward"></span></p>
+    </div>
+
 </div>
 
 <div class="footer">
@@ -120,6 +137,10 @@
 <script>
 const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
 
+
+// ------------------------
+// Load Beds Into Dropdown
+// ------------------------
 async function loadBeds() {
     try {
         const res = await fetch(`${API_BASE}/beds`);
@@ -130,17 +151,20 @@ async function loadBeds() {
 
         beds.forEach(b => {
             const opt = document.createElement("option");
-            opt.value = b.bed_id;
+            opt.value = b.bed_number;       // IMPORTANT: using bed_number now
             opt.textContent = `Bed ${b.bed_number} (Ward ${b.ward_id})`;
             select.appendChild(opt);
         });
 
+        // auto-load first bed
         if (beds.length > 0) {
-            loadBedInfo(beds[0].bed_id);
+            loadBedInfo(beds[0].bed_number);
+            loadPatientInfo(beds[0].bed_number);
         }
 
         select.addEventListener("change", (e) => {
             loadBedInfo(e.target.value);
+            loadPatientInfo(e.target.value);
         });
 
     } catch (err) {
@@ -148,9 +172,14 @@ async function loadBeds() {
     }
 }
 
-async function loadBedInfo(bed_id) {
+
+
+// ------------------------
+// Load Bed Details
+// ------------------------
+async function loadBedInfo(bedNumber) {
     try {
-        const res = await fetch(`${API_BASE}/beds/${bed_id}`);
+        const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
         const data = await res.json();
 
         document.getElementById("bedInfoBox").style.display = "block";
@@ -161,13 +190,55 @@ async function loadBedInfo(bed_id) {
             <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
             <strong>Patient Assigned:</strong> ${data.patient_id ?? "None"}
         `;
+
     } catch (err) {
         console.error("Error loading bed info:", err);
     }
 }
 
+
+
+// ------------------------
+// NEW: Load Patient Details
+// ------------------------
+async function loadPatientInfo(bedNumber) {
+    if (!bedNumber) {
+        document.getElementById("patientInfo").style.display = "none";
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
+        if (!res.ok) {
+            document.getElementById("patientInfo").style.display = "none";
+            return;
+        }
+
+        const data = await res.json();
+
+        document.getElementById("pi_id").textContent = data.patient_id ?? "None";
+        document.getElementById("pi_name").textContent = data.first_name 
+            ? `${data.first_name} ${data.last_name}`
+            : "No patient assigned";
+        document.getElementById("pi_status").textContent = data.admission_status ?? "N/A";
+        document.getElementById("pi_bed_status").textContent = data.bed_status;
+        document.getElementById("pi_bed_type").textContent = data.bed_type;
+        document.getElementById("pi_ward").textContent = data.ward_name;
+
+        document.getElementById("patientInfo").style.display = "block";
+
+    } catch (err) {
+        console.error("Error loading patient info:", err);
+    }
+}
+
+
+
+// ------------------------
+// Update Bed Status
+// ------------------------
 async function updateBed() {
-    const bed_id = document.getElementById("bedSelect").value;
+    const bedNumber = document.getElementById("bedSelect").value;
     const new_status = document.getElementById("statusSelect").value;
 
     try {
@@ -175,7 +246,7 @@ async function updateBed() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                bed_id,
+                bed_id: bedNumber,  // using bedNumber for updates
                 bed_status: new_status,
                 patient_id: null
             })
@@ -184,7 +255,8 @@ async function updateBed() {
         const msg = await res.text();
         alert(msg);
 
-        loadBedInfo(bed_id);
+        loadBedInfo(bedNumber);
+        loadPatientInfo(bedNumber);
 
     } catch (err) {
         console.error("Error updating bed:", err);
