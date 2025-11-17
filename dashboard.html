@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Hospital Bed Dashboard</title>
 
-<!-- ==== STYLES ==== -->
 <style>
     body {
         background: #f5f7fa;
@@ -84,10 +83,8 @@
 
 <body>
 
-<!-- NAVBAR -->
 <div class="navbar">MED Bed Management Dashboard</div>
 
-<!-- MAIN CARD -->
 <div class="container">
     <h2>Update Bed Status</h2>
 
@@ -100,28 +97,25 @@
         <option value="occupied">Occupied</option>
         <option value="reserved">Reserved</option>
         <option value="cleaning">Cleaning</option>
-        <option value="maintenance">Maintenance</option>
+        <option value="transferring">Transferring</option>
     </select>
 
     <button onclick="updateBed()">Update Bed</button>
 
-    <!-- Bed Information Box -->
+    <!-- Bed Info -->
     <div class="bed-info-box" id="bedInfoBox">
         <h3>Bed Details</h3>
         <p id="bedInfoContent">Loading…</p>
     </div>
 
-
-    <!-- ============================== -->
-    <!-- NEW PATIENT INFORMATION PANEL -->
-    <!-- ============================== -->
+    <!-- Patient Info -->
     <h2 style="margin-top:40px;">Patient Details for Selected Bed</h2>
 
     <div class="patient-info-box" id="patientInfo">
         <h3>Patient Information</h3>
         <p><strong>Patient ID:</strong> <span id="pi_id"></span></p>
         <p><strong>Name:</strong> <span id="pi_name"></span></p>
-        <p><strong>Status:</strong> <span id="pi_status"></span></p>
+        <p><strong>Admission Status:</strong> <span id="pi_status"></span></p>
         <p><strong>Bed Status:</strong> <span id="pi_bed_status"></span></p>
         <p><strong>Bed Type:</strong> <span id="pi_bed_type"></span></p>
         <p><strong>Ward:</strong> <span id="pi_ward"></span></p>
@@ -133,14 +127,13 @@
     © 2025 MED System – Real-Time Bed Tracking
 </div>
 
-<!-- ==== JS LOGIC ==== -->
 <script>
 const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
 
 
-// ------------------------
-// Load Beds Into Dropdown
-// ------------------------
+// -------------------------------------------------
+// LOAD ALL BEDS INTO DROPDOWN
+// -------------------------------------------------
 async function loadBeds() {
     try {
         const res = await fetch(`${API_BASE}/beds`);
@@ -151,12 +144,11 @@ async function loadBeds() {
 
         beds.forEach(b => {
             const opt = document.createElement("option");
-            opt.value = b.bed_number;       // IMPORTANT: using bed_number now
+            opt.value = b.bed_number;  
             opt.textContent = `Bed ${b.bed_number} (Ward ${b.ward_id})`;
             select.appendChild(opt);
         });
 
-        // auto-load first bed
         if (beds.length > 0) {
             loadBedInfo(beds[0].bed_number);
             loadPatientInfo(beds[0].bed_number);
@@ -173,16 +165,16 @@ async function loadBeds() {
 }
 
 
-
-// ------------------------
-// Load Bed Details
-// ------------------------
+// -------------------------------------------------
+// LOAD BED DETAILS
+// -------------------------------------------------
 async function loadBedInfo(bedNumber) {
     try {
         const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
         const data = await res.json();
 
         document.getElementById("bedInfoBox").style.display = "block";
+
         document.getElementById("bedInfoContent").innerHTML = `
             <strong>Bed Number:</strong> ${data.bed_number}<br>
             <strong>Status:</strong> ${data.bed_status}<br>
@@ -190,17 +182,15 @@ async function loadBedInfo(bedNumber) {
             <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
             <strong>Patient Assigned:</strong> ${data.patient_id ?? "None"}
         `;
-
     } catch (err) {
         console.error("Error loading bed info:", err);
     }
 }
 
 
-
-// ------------------------
-// NEW: Load Patient Details
-// ------------------------
+// -------------------------------------------------
+// STEP 2 — LOAD PATIENT DETAILS
+// -------------------------------------------------
 async function loadPatientInfo(bedNumber) {
     if (!bedNumber) {
         document.getElementById("patientInfo").style.display = "none";
@@ -233,10 +223,9 @@ async function loadPatientInfo(bedNumber) {
 }
 
 
-
-// ------------------------
-// Update Bed Status
-// ------------------------
+// -------------------------------------------------
+// UPDATE BED
+// -------------------------------------------------
 async function updateBed() {
     const bedNumber = document.getElementById("bedSelect").value;
     const new_status = document.getElementById("statusSelect").value;
@@ -246,14 +235,13 @@ async function updateBed() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                bed_id: bedNumber,  // using bedNumber for updates
+                bed_id: bedNumber,
                 bed_status: new_status,
                 patient_id: null
             })
         });
 
-        const msg = await res.text();
-        alert(msg);
+        alert(await res.text());
 
         loadBedInfo(bedNumber);
         loadPatientInfo(bedNumber);
@@ -263,6 +251,7 @@ async function updateBed() {
         alert("Failed to update bed.");
     }
 }
+
 
 window.onload = loadBeds;
 </script>
