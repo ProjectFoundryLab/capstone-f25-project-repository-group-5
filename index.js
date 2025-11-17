@@ -14,7 +14,7 @@ app.use(cors());
 const storage = new Storage();
 
 // ------------------------------
-// 🔧 GLOBAL NULL SANITIZER
+//  GLOBAL NULL SANITIZER
 // ------------------------------
 function toNull(v) {
   if (v === undefined || v === null) return null;
@@ -24,7 +24,7 @@ function toNull(v) {
 }
 
 // ------------------------------
-// 🔧 INT SANITIZER (blank → NULL)
+//  INT SANITIZER (blank → NULL)
 // ------------------------------
 function toIntOrNull(v) {
   v = toNull(v);
@@ -34,7 +34,7 @@ function toIntOrNull(v) {
 }
 
 // ------------------------------
-// 🔧 DATE NORMALIZER (MM/DD/YYYY → YYYY-MM-DD)
+//  DATE NORMALIZER (MM/DD/YYYY → YYYY-MM-DD)
 // ------------------------------
 function fixDate(v) {
   if (!v || v.trim() === "") return null;
@@ -49,7 +49,7 @@ function fixDate(v) {
 const CLOUD_SQL_CONNECTION_NAME = process.env.CLOUD_SQL_CONNECTION_NAME;
 
 if (!process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
-  console.error("❌ FATAL: Missing required DB environment variables.");
+  console.error("FATAL: Missing required DB environment variables.");
   process.exit(1);
 }
 
@@ -70,7 +70,7 @@ async function getDbConnection() {
 }
 
 // ===================================================================
-// 🔥 GCS → MySQL CSV processing (Eventarc Trigger)
+//  GCS → MySQL CSV processing (Eventarc Trigger)
 // ===================================================================
 async function processCsv(bucketName, fileName) {
   const bucket = storage.bucket(bucketName);
@@ -315,7 +315,7 @@ else if (
     }
 
     await conn.commit();
-    console.log("✅ CSV data imported successfully");
+    console.log(" CSV data imported successfully");
   } catch (err) {
     await conn.rollback();
     console.error("DB error during CSV import:", err);
@@ -375,7 +375,7 @@ app.post("/beds/update", async (req, res) => {
       [bed_status, toIntOrNull(patient_id), bed_id]
     );
     await conn.end();
-    res.send("✅ Bed updated successfully");
+    res.send(" Bed updated successfully");
   } catch (err) {
     res.status(500).send("Error updating bed");
   }
@@ -422,7 +422,7 @@ app.get("/wards", async (req, res) => {
 });
 
 // ================================================================
-// 🔥 LIVE FEED — Latest Admissions
+// LIVE FEED — Latest Admissions
 // ================================================================
 app.get("/admissions/latest", async (req, res) => {
   try {
@@ -466,5 +466,5 @@ app.get("/health", (req, res) => res.send("ok"));
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`✅ Server listening on port ${port}`);
+  console.log(` Server listening on port ${port}`);
 });
