@@ -178,41 +178,66 @@ async function processCsv(bucketName, fileName) {
     // ------------------------------
     // ADMISSIONS
     // ------------------------------
-    else if (records[0]?.admission_id && records[0]?.admission_time !== undefined) {
-      console.log("Detected admissions.csv");
-      for (const r of records) {
-        await conn.query(
-          `INSERT INTO admissions (
-            admission_id, patient_id, ward_id, bed_id,
-            admission_time, discharge_time, admission_reason,
-            disposition, transfer_from, transfer_to
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE
-            patient_id = VALUES(patient_id),
-            ward_id = VALUES(ward_id),
-            bed_id = VALUES(bed_id),
-            admission_time = VALUES(admission_time),
-            discharge_time = VALUES(discharge_time),
-            admission_reason = VALUES(admission_reason),
-            disposition = VALUES(disposition),
-            transfer_from = VALUES(transfer_from),
-            transfer_to = VALUES(transfer_to)`,
-          [
-            toIntOrNull(r.admission_id),
-            toIntOrNull(r.patient_id),
-            toIntOrNull(r.ward_id),
-            toIntOrNull(r.bed_id),
-            fixDate(r.admission_time),
-            fixDate(r.discharge_time),
-            toNull(r.admission_reason),
-            toNull(r.disposition),
-            toIntOrNull(r.transfer_from),
-            toIntOrNull(r.transfer_to),
-          ]
-        );
-      }
-    }
+    // ------------------------------
+// ADMISSIONS (new schema)
+// ------------------------------
+else if (
+  records[0]?.admission_id &&
+  (records[0]?.admission_date !== undefined || records[0]?.admission_time !== undefined)
+) {
+  console.log("Detected admissions.csv");
+
+  for (const r of records) {
+    // Convert values
+    const admissionDate = fixDate(r.admission_date);
+    const dischargeDate = fixDate(r.discharge_date);
+
+    const admissionTime = toNull(r.admission_time);      // expects HH:MM or HH:MM:SS
+    const dischargeTime = toNull(r.discharge_time);
+
+    await conn.query(
+      `INSERT INTO admissions (
+        admission_id, patient_id, ward_id, bed_id,
+        admission_date, admission_time,
+        discharge_date, discharge_time,
+        admission_reason, disposition,
+        transfer_from, transfer_to
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        patient_id      = VALUES(patient_id),
+        ward_id         = VALUES(ward_id),
+        bed_id          = VALUES(bed_id),
+        admission_date  = VALUES(admission_date),
+        admission_time  = VALUES(admission_time),
+        discharge_date  = VALUES(discharge_date),
+        discharge_time  = VALUES(discharge_time),
+        admission_reason= VALUES(admission_reason),
+        disposition     = VALUES(disposition),
+        transfer_from   = VALUES(transfer_from),
+        transfer_to     = VALUES(transfer_to)`,
+      [
+        toIntOrNull(r.admission_id),
+        toIntOrNull(r.patient_id),
+        toIntOrNull(r.ward_id),
+        toIntOrNull(r.bed_id),
+
+        admissionDate,
+        admissionTime,
+
+        dischargeDate,
+        dischargeTime,
+
+        toNull(r.admission_reason),
+        toNull(r.disposition),
+
+        toIntOrNull(r.transfer_from),
+        toIntOrNull(r.transfer_to),
+      ]
+    );
+  }
+}
+
 
     // ------------------------------
     // FORECASTS
@@ -395,6 +420,47 @@ app.get("/wards", async (req, res) => {
     res.status(500).send("Error fetching wards");
   }
 });
+
+// ================================================================
+// 🔥 LIVE FEED — Latest Admissions
+// ================================================================
+app.get("/admissions/latest", async (req, res) => {
+  try {
+    const conn = await getDbConnection();
+    const [rows] = await conn.query(`
+      SELECT 
+        a.admission_id,
+        a.admission_time,
+        a.discharge_time,
+        a.admission_reason,
+        a.disposition,
+        a.transfer_from,
+        a.transfer_to,
+        
+        p.patient_id,
+        p.first_name,
+        p.last_name,
+
+        w.name AS ward_name,
+        b.bed_number
+
+      FROM admissions a
+      LEFT JOIN patients p ON a.patient_id = p.patient_id
+      LEFT JOIN wards w ON a.ward_id = w.ward_id
+      LEFT JOIN beds b ON a.bed_id = b.bed_id
+      ORDER BY a.admission_time DESC
+      LIMIT 25;
+    `);
+
+    await conn.end();
+    res.json(rows);
+
+  } catch (err) {
+    console.error("Error fetching latest admissions:", err);
+    res.status(500).send("Error fetching latest admissions");
+  }
+});
+
 
 app.get("/health", (req, res) => res.send("ok"));
 
