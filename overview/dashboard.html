@@ -1,11 +1,16 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Medbed Systems Dashboard</title>
 
-    <link rel="stylesheet" href="styles.css" />
+    <!-- shared styles -->
+    <link rel="stylesheet" href="../shared/variables.css" />
+    <link rel="stylesheet" href="../shared/layout.css" />
+    <link rel="stylesheet" href="../shared/components.css" />
+    <!-- page-specific -->
+    <link rel="stylesheet" href="dashboard.css" />
   </head>
 
   <body class="dashboard-page">
@@ -15,7 +20,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-brand">
-          <img src="images/Med.jpg" alt="Medbed Systems logo" class="brand-logo" />
+          <img src="../images/Med.jpg" alt="Medbed Systems logo" class="brand-logo" />
           <div class="logo-text">
             <span>Medbed Systems</span>
           </div>
@@ -36,12 +41,12 @@
         <a href="insights.html">Insights</a>
 
         <p class="sidebar-label">Operations</p>
-        <a href="patients.html">Patients</a>
-        <a href="manage-beds.html">Manage beds</a>
-        <a href="manage-rooms.html">Manage rooms</a>
-        <a href="users.html">Users</a>
+        <a href="../operations/patients.html">Patients</a>
+        <a href="../operations/manage-beds.html">Manage beds</a>
+        <a href="../operations/manage-rooms.html">Manage rooms</a>
+        <a href="../operations/users.html">Users</a>
 
-        <a href="index.html" class="logout-link">Logout</a>
+        <a href="../shared/login.html" class="logout-link">Logout</a>
       </nav>
     </aside>
 
@@ -64,9 +69,7 @@
         </p>
       </section>
 
-      <!-- =========================
-           TOP ROW: OCCUPANCY + GRAFANA PLACEHOLDER
-           ========================= -->
+      <!-- TOP ROW: OCCUPANCY + GRAFANA PLACEHOLDER -->
       <section class="top-row">
         <!-- LEFT: OCCUPANCY -->
         <div class="card occupancy-card">
@@ -116,9 +119,7 @@
         </div>
       </section>
 
-      <!-- =========================
-           MIDDLE ROW: 3 WARD CARDS
-           ========================= -->
+      <!-- MIDDLE ROW: 3 WARD CARDS -->
       <section class="page-section">
         <div class="section-header">
           <h3>Wards overview</h3>
@@ -149,9 +150,7 @@
         </div>
       </section>
 
-      <!-- =========================
-           UPDATE BED + DETAILS
-           ========================= -->
+      <!-- UPDATE BED + DETAILS -->
       <section class="card">
         <h3>Update bed status</h3>
         <p class="muted">

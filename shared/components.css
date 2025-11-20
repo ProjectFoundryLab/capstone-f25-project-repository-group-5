@@ -1,0 +1,260 @@
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 230px;
+  background-color: #0b0052;   /* Dark blue */
+  color: #fff;
+  padding: 24px 18px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Container for logo + user block */
+.sidebar-header {
+  margin-bottom: 22px;
+}
+
+/* Brand row: logo + "Medbed Systems" text */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Logo in sidebar (Med.jpg) */
+.brand-logo {
+  height: 48px;        /* larger, cleaner */
+  width: auto;
+  border-radius: 6px;
+  background: none;
+  padding: 0;
+  display: block;
+}
+
+/* "Medbed Systems" text next to logo */
+.logo-text span {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* User info in sidebar */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Small circular avatar w/ initials */
+.avatar-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+/* Name + role stacked vertically */
+.user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 13px;
+}
+
+.user-role {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* Nav links */
+.sidebar-nav {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Small all-caps labels like "Overview", "Operations" */
+.sidebar-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+  margin: 10px 0 4px 0;
+}
+
+/* Actual clickable nav links */
+.sidebar-nav a {
+  color: #e5e7eb;
+  text-decoration: none;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+/* Hover effect: slight blue overlay + nudge */
+.sidebar-nav a:hover {
+  background: rgba(148, 163, 184, 0.25);
+  transform: translateX(2px);
+}
+
+/* Active link: pill is light + text dark greenish */
+.sidebar-nav a.active {
+  background: #e5f9ee;
+  color: #022c22;
+  font-weight: 600;
+}
+
+/* Logout pill */
+.logout-link {
+  margin-top: 10px;
+  display: block;
+  text-align: center;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #fecaca;
+  text-decoration: none;
+  border: 1px solid rgba(248, 250, 252, 0.5);
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+}
+
+.logout-link:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #fecaca;
+  transform: translateX(2px);
+}
+
+/* ===== CARD COMPONENT ===== */
+.card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px 20px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* ===== INPUTS & BUTTONS ===== */
+.input-select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* Make first select (bed picker) flex to take up remaining width */
+.input-select:first-of-type {
+  flex: 1;
+}
+
+/* Update button in the filters row */
+.small-btn {
+  background: #0b0052;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.small-btn:hover {
+  opacity: 0.92;
+}
+
+/* Text search pill */
+.input-text {
+  border-radius: 999px;
+  border: 1px solid #d5d5e0;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* Primary purple filter button */
+.primary-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #1d0b64;
+  color: #ffffff;
+}
+
+/* ===== TABLE ===== */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table thead th {
+  text-align: left;
+  padding: 10px 0;
+  border-bottom: 1px solid #ececf2;
+  font-weight: 600;
+}
+
+.data-table tbody td {
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f3f7;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table .empty-row {
+  text-align: center;
+  padding: 24px 0;
+  color: #9b9bb5;
+}
+
+/* Status pills like the mockup */
+.status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pill-inuse {
+  background: #e5f7ea;
+  color: #0a8a3a;
+}
+
+.status-pill-reserved {
+  background: #ffe7ff;
+  color: #c400c4;
+}
+
+.status-pill-discharged {
+  background: #f1f1f5;
+  color: #6b6b7f;
+}

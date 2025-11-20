@@ -1,0 +1,171 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+/* ===== LOGIN LAYOUT ===== */
+
+body.login-page {
+  background-color: #0b0052; /* Dark blue background */
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 40px 30px;
+  width: 350px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+}
+
+.logo {
+  margin-bottom: 20px;
+}
+
+.logo img {
+  max-width: 140px;
+}
+
+.login-container h2 {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 25px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.login-button {
+  width: 100%;
+  background-color: #7cfc98;   /* Light green */
+  color: #000;
+  font-weight: bold;
+  border: none;
+  padding: 10px 0;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.login-button:hover {
+  background-color: #6ee08a;
+}
+
+.forgot-password {
+  display: block;
+  margin-top: 15px;
+  font-size: 12px;
+  color: #555;
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* ===== DASHBOARD LAYOUT ===== */
+
+body.dashboard-page {
+  /* Light gradient background behind sidebar/app content */
+  background: radial-gradient(circle at top left, #e5e7ff 0, #f3f4f6 40%, #f9fafb 100%);
+  min-height: 100vh;
+  display: flex;
+  color: var(--color-text-main);
+}
+
+/* Main content (right of sidebar) */
+.dashboard-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto 60px;
+  padding: 30px 35px 60px 35px;
+}
+
+/* Top bar with "Today" pill right-aligned */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Small rounded "Today" pill */
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  font-size: 12px;
+}
+
+.pill-label {
+  opacity: 0.8;
+}
+
+.pill-value {
+  font-weight: 600;
+}
+
+/* Title + subtitle block above cards */
+.page-header {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* shared filters row */
+.filters-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 900px) {
+  /* Hide sidebar completely on small screens (could be turned into hamburger later) */
+  .sidebar {
+    display: none;
+  }
+
+  /* Tighter padding around main content */
+  .dashboard-content {
+    padding: 20px;
+  }
+
+  /* Stack selects + button vertically for smaller viewports */
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

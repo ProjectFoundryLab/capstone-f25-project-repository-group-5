@@ -2,23 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="styles.css" />
-  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="../shared/variables.css" />
+  <link rel="stylesheet" href="../shared/components.css" />
+  <link rel="stylesheet" href="../shared/login.css" />
+
+  <title>Login – Medbed Systems</title>
 </head>
 
-<!-- Add the login-page class so styles.css applies the centered card + dark blue background -->
 <body class="login-page">
   <div class="login-container">
     <!-- Logo -->
     <div class="logo">
-      <img src="images/Med.jpg" alt="MED Bed Systems" />
+      <img src="../images/Med.jpg" alt="Medbed Systems" />
     </div>
 
-    <!-- Login title -->
-    <h2>Please use your credentials to login</h2>
+    <h2>Please use your credentials to log in</h2>
 
-    <!-- Login form (hooked to Firebase below) -->
     <form>
       <input type="text" placeholder="User ID" class="input-field" />
       <input type="password" placeholder="Password" class="input-field" />
@@ -28,13 +30,12 @@
     <a href="#" class="forgot-password">Forgot password?</a>
   </div>
 
+  <!-- Firebase Login Logic (unchanged) -->
   <script type="module">
-    // --- Firebase SDK imports ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
     import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-    // --- Firebase config (from group project) ---
     const firebaseConfig = {
       apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
       authDomain: "sqldatabasetest-473020.firebaseapp.com",
@@ -45,12 +46,10 @@
       measurementId: "G-WCZ3JSGH71"
     };
 
-    // --- Initialize Firebase ---
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const auth = getAuth(app);
 
-    // --- Login form handling ---
     const form = document.querySelector("form");
 
     form.addEventListener("submit", async (e) => {
@@ -60,14 +59,12 @@
       const password = document.querySelector('input[type="password"]').value;
 
       try {
-        // Firebase login
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        alert("✅ Login successful: " + userCredential.user.email);
+        await signInWithEmailAndPassword(auth, email, password);
+        alert("Login successful!");
 
-        // Redirect to dashboard page
-        window.location.href = "dashboard.html";
+        // redirect to dashboard
+        window.location.href = "../overview/dashboard.html";
       } catch (error) {
-        // Show error message from Firebase
         alert("❌ Login failed: " + error.message);
       }
     });

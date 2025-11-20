@@ -1,0 +1,26 @@
+/* Patients card layout */
+.patients-card {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Filters row on patients page */
+.patients-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.patients-search {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .patients-filters {
+    grid-template-columns: 1fr;
+  }
+}
