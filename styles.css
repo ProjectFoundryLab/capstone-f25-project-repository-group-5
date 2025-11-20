@@ -397,3 +397,198 @@ body.dashboard-page {
     align-items: stretch;
   }
 }
+
+/* Top rows layout */
+.top-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.top-row .card {
+  flex: 1;
+  min-width: 260px;
+}
+
+/* Occupancy card styling */
+.occupancy-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-divider {
+  border: none;
+  border-top: 1px solid #ececec;
+  margin: 8px 0;
+}
+
+.status-header {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Status list inline like the mockup */
+.status-list.inline-status {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.status-list.inline-status li {
+  display: flex;
+  gap: 4px;
+}
+
+.status-label {
+  font-size: 12px;
+}
+
+/* Optional colors similar to the original UI */
+.status-available { color: #00a000; }   /* green */
+.status-occupied { color: #222; }
+.status-reserved { color: #d000ff; }    /* magenta-ish */
+.status-cleaning { color: #0080ff; }    /* blue */
+.status-transferring { color: #ff7a00; } /* orange */
+
+/* Grafana placeholder card */
+.placeholder-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.placeholder-area {
+  margin-top: 4px;
+  height: 140px;
+  border-radius: 12px;
+  border: 1px dashed #d5d5d5;
+  background: #fafafa;
+}
+
+/* Wards row: three equal cards on one line */
+.wards-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.wards-row .card {
+  flex: 1;
+  min-width: 0;
+}
+
+.ward-card {
+  font-size: 14px;
+}
+
+.ward-name {
+  margin-bottom: 6px;
+}
+
+.ward-line {
+  margin: 2px 0;
+}
+
+/* Patients card layout */
+.patients-card {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patients-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.patients-search {
+  width: 100%;
+}
+
+/* If you don't already have .input-text */
+.input-text {
+  border-radius: 999px;
+  border: 1px solid #d5d5e0;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* Primary purple filter button */
+.primary-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #1d0b64;
+  color: #ffffff;
+}
+
+/* Table styling */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table thead th {
+  text-align: left;
+  padding: 10px 0;
+  border-bottom: 1px solid #ececf2;
+  font-weight: 600;
+}
+
+.data-table tbody td {
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f3f7;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table .empty-row {
+  text-align: center;
+  padding: 24px 0;
+  color: #9b9bb5;
+}
+
+/* Status pills like the mockup */
+.status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pill-inuse {
+  background: #e5f7ea;
+  color: #0a8a3a;
+}
+
+.status-pill-reserved {
+  background: #ffe7ff;
+  color: #c400c4;
+}
+
+.status-pill-discharged {
+  background: #f1f1f5;
+  color: #6b6b7f;
+}
