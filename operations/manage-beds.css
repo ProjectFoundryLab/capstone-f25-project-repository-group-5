@@ -1,0 +1,56 @@
+/* === Page-specific for Manage Beds === */
+
+.beds-filter-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+/* Table buttons */
+.table-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+
+.table-btn.green {
+  background: #65d68d;
+}
+
+.table-btn.navy {
+  background: #0b0052;
+}
+
+/* Status pills */
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-inuse,
+.status-occupied {
+  background: #e6f6e9;
+  color: #18863d;
+}
+
+.status-cleaning {
+  background: #d3ecfa;
+  color: #006bb3;
+}
+
+.status-reserved {
+  background: #ffe6f8;
+  color: #c600a4;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 10px;
+}

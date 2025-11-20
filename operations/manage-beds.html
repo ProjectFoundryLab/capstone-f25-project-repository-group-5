@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Beds – Medbed Systems</title>
+
+    <!-- shared styles -->
+    <link rel="stylesheet" href="../shared/variables.css" />
+    <link rel="stylesheet" href="../shared/layout.css" />
+    <link rel="stylesheet" href="../shared/components.css" />
+
+    <!-- page-specific -->
+    <link rel="stylesheet" href="manage-beds.css" />
+  </head>
+
+  <body class="dashboard-page">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <img src="../images/Med.jpg" class="brand-logo" alt="Medbed Systems logo" />
+          <div class="logo-text"><span>Medbed Systems</span></span></div>
+        </div>
+
+        <div class="sidebar-user">
+          <div class="avatar-circle">JS</div>
+          <div class="user-meta">
+            <span class="user-name">John Smith</span>
+            <span class="user-role">Doctor</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <p class="sidebar-label">Overview</p>
+        <a href="../overview/dashboard.html">Dashboard</a>
+        <a href="../overview/insights.html">Insights</a>
+
+        <p class="sidebar-label">Operations</p>
+        <a href="patients.html">Patients</a>
+        <a href="manage-beds.html" class="active">Manage beds</a>
+        <a href="manage-rooms.html">Manage rooms</a>
+        <a href="users.html">Users</a>
+
+        <a href="../shared/login.html" class="logout-link">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-content">
+      <header class="topbar">
+        <div></div>
+        <div class="topbar-pill">
+          <span class="pill-label">Today</span>
+          <span class="pill-value" id="todayValue">—</span>
+        </div>
+      </header>
+
+      <section class="page-header">
+        <h2>Manage beds</h2>
+        <p class="page-subtitle">
+          Change bed status, assign patients, and mark beds for cleaning.
+        </p>
+      </section>
+
+      <!-- FILTER BAR -->
+      <section class="card beds-filter-card">
+        <select class="input-select" id="filterDept">
+          <option value="">All departments</option>
+        </select>
+
+        <select class="input-select" id="filterStatus">
+          <option value="">All statuses</option>
+        </select>
+
+        <button class="small-btn" id="applyFiltersBtn">Apply filters</button>
+      </section>
+
+      <!-- TABLE -->
+      <section class="card">
+        <div class="table-wrapper">
+          <table class="data-table" id="bedsTable">
+            <thead>
+              <tr>
+                <th>Bed</th>
+                <th>Department</th>
+                <th>Room</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bedsTbody">
+              <tr><td colspan="5" class="empty-row">Loading beds…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- BASIC JS LOADER -->
+    <script>
+      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+
+      function setToday() {
+        const now = new Date();
+        document.getElementById("todayValue").textContent =
+          now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+
+      async function loadBeds() {
+        try {
+          const res = await fetch(`${API_BASE}/beds`);
+          const beds = await res.json();
+          renderTable(beds);
+        } catch (err) {
+          console.error("Error loading beds:", err);
+        }
+      }
+
+      function renderTable(beds) {
+        const tbody = document.getElementById("bedsTbody");
+        tbody.innerHTML = "";
+
+        beds.forEach((b) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>Bed ${b.bed_number}</td>
+            <td>${b.department || "—"}</td>
+            <td>Room ${b.room_number || "—"}</td>
+            <td>
+              <span class="status-pill status-${b.bed_status}">${b.bed_status}</span>
+            </td>
+            <td class="actions-cell">
+              <button class="table-btn green">Mark cleaning</button>
+              <button class="table-btn navy">Discharge</button>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      window.addEventListener("load", () => {
+        setToday();
+        loadBeds();
+      });
+    </script>
+  </body>
+</html>
