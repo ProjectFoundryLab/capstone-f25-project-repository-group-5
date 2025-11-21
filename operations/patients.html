@@ -242,5 +242,22 @@
       if (e.key === "Enter") applyFilters();
     });
   </script>
+
+  <script type="module">
+    import { loadUserProfile, logout } from "../shared/auth.js";
+
+    loadUserProfile().then((data) => {
+      document.getElementById("userName").textContent = data.fullName;
+      document.getElementById("userRole").textContent = data.role;
+      document.getElementById("userInitials").textContent =
+        data.fullName.split(" ").map(n => n[0]).join("");
+    });
+
+    document.querySelector(".logout-link").addEventListener("click", (e) => {
+      e.preventDefault();
+      logout();
+    });
+  </script>
+
 </body>
 </html>
