@@ -34,8 +34,9 @@ body.login-page {
 
 /* input fields */
 .input-field {
-  width: 100%;
+  width: 85%;
   padding: 10px 12px;
+  margin: 0 auto 15px auto;
   margin-bottom: 15px;
   border: 1px solid #ddd;
   border-radius: 6px;
