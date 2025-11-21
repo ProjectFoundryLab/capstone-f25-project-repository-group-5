@@ -365,66 +365,78 @@ app.get("/beds", async (req, res) => {
 });
 
 // ================================================================
-// UPDATE BED + PATIENT ASSIGNMENT
+// NEW: Update bed + update admissions + clear/set patient assignment
 // ================================================================
-app.post("/beds/update", async (req, res) => {
-  const { bed_id, bed_status, patient_id } = req.body;
+app.post("/beds/assign", async (req, res) => {
+  const { bed_number, bed_status, patient_id } = req.body;
 
-  if (!bed_id) return res.status(400).send("Missing bed_id");
+  if (!bed_number) {
+    return res.status(400).send("Missing bed_number");
+  }
 
   try {
     const conn = await getDbConnection();
 
-    //  If bed is set to "available", remove patient assignment
-    let finalPatient = toIntOrNull(patient_id);
-    if (bed_status === "available") {
-      finalPatient = null;
+    // Step 1: Find bed_id from bed_number
+    const [beds] = await conn.query(
+      "SELECT bed_id FROM beds WHERE bed_number = ?",
+      [bed_number]
+    );
 
-      // close any admissions tied to this bed
+    if (beds.length === 0) {
+      await conn.end();
+      return res.status(404).send("Bed not found");
+    }
+
+    const bed_id = beds[0].bed_id;
+
+    // Step 2: Update the bed table
+    await conn.query(
+      "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
+      [bed_status, patient_id ? patient_id : null, bed_id]
+    );
+
+    // Step 3: If bed is set to AVAILABLE → discharge any active admission
+    if (bed_status === "available") {
       await conn.query(
         `UPDATE admissions 
-         SET discharge_date = CURDATE(),
+         SET discharge_date = CURDATE(), 
              discharge_time = CURTIME(),
-             disposition = 'Discharged'
+             disposition = 'discharged'
          WHERE bed_id = ? AND discharge_date IS NULL`,
         [bed_id]
       );
     }
 
-    //  If bed is "occupied", we require a patient ID
-    if (bed_status === "occupied" && !finalPatient) {
-      await conn.end();
-      return res.status(400).send("Occupied beds must have a patient_id");
-    }
-
-    // 3️ Update bed record
-    await conn.query(
-      "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
-      [bed_status, finalPatient, bed_id]
-    );
-
-    //  Create admission if occupied
-    if (bed_status === "occupied") {
+    // Step 4: If bed is set to OCCUPIED → create or update an admission
+    if (bed_status === "occupied" && patient_id) {
       await conn.query(
         `INSERT INTO admissions (
-            patient_id, ward_id, bed_id,
-            admission_date, admission_time,
-            admission_reason, disposition
-        )
-        SELECT ?, ward_id, bed_id, CURDATE(), CURTIME(), 'Auto-assigned', 'Admitted'
-        FROM beds WHERE bed_id = ?`,
-        [finalPatient, bed_id]
+           patient_id, ward_id, bed_id,
+           admission_date, admission_time,
+           admission_reason, disposition
+         )
+         SELECT ?, w.ward_id, b.bed_id,
+                CURDATE(), CURTIME(),
+                'Hospitalized', 'admitted'
+         FROM beds b 
+         JOIN wards w ON b.ward_id = w.ward_id
+         WHERE b.bed_id = ?
+         ON DUPLICATE KEY UPDATE 
+           discharge_date = NULL,
+           discharge_time = NULL`,
+        [patient_id, bed_id]
       );
     }
 
     await conn.end();
-    res.send("Bed updated successfully");
-
+    res.send("Bed + admission updated successfully");
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error updating bed");
+    console.error("Error in /beds/assign:", err);
+    res.status(500).send("Server error updating bed + admissions");
   }
 });
+
 
 
 app.get("/beds/:bedNumber", async (req, res) => {
