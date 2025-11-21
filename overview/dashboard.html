@@ -262,7 +262,8 @@ async function loadBeds() {
 
     ALL_BEDS.forEach(b => {
       const opt = document.createElement("option");
-      opt.value = b.bed_number;
+      opt.value = b.bed_id;   
+      opt.dataset.bedNumber = b.bed_number; 
       opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
       select.appendChild(opt);
     });
