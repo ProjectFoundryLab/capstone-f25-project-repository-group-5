@@ -45,7 +45,7 @@
         <a href="manage-beds.html">Manage beds</a>
         <a href="manage-rooms.html" class="active">Manage rooms</a>
 
-        <a href="index.html" class="logout-link">Logout</a>
+        <a href="../index.html" class="logout-link">Logout</a>
       </nav>
     </aside>
 
@@ -264,7 +264,7 @@
       document.getElementById("applyFiltersBtn").addEventListener("click", applyRoomFilters);
     </script>
 
-    <script type="module">
+<script type="module">
       import { loadUserProfile, logout } from "../shared/auth.js";
 
       loadUserProfile().then((data) => {
