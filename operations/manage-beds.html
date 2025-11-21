@@ -1,151 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Manage Beds – Medbed Systems</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Beds – Medbed Systems</title>
 
-    <!-- shared styles -->
-    <link rel="stylesheet" href="../shared/variables.css" />
-    <link rel="stylesheet" href="../shared/layout.css" />
-    <link rel="stylesheet" href="../shared/components.css" />
+  <!-- shared styles -->
+  <link rel="stylesheet" href="../shared/variables.css" />
+  <link rel="stylesheet" href="../shared/layout.css" />
+  <link rel="stylesheet" href="../shared/components.css" />
 
-    <!-- page-specific -->
-    <link rel="stylesheet" href="manage-beds.css" />
-  </head>
+  <!-- page-specific -->
+  <link rel="stylesheet" href="manage-beds.css" />
+</head>
 
-  <body class="dashboard-page">
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-brand">
-          <img src="../images/Med.jpg" class="brand-logo" alt="Medbed Systems logo" />
-          <div class="logo-text"><span>Medbed Systems</span></span></div>
-        </div>
-
-        <div class="sidebar-user">
-          <div class="avatar-circle">JS</div>
-          <div class="user-meta">
-            <span class="user-name">John Smith</span>
-            <span class="user-role">Doctor</span>
-          </div>
-        </div>
+<body class="dashboard-page">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <img src="../images/Med.jpg" class="brand-logo" alt="Medbed Systems logo" />
+        <div class="logo-text"><span>Medbed Systems</span></div>
       </div>
 
-      <nav class="sidebar-nav">
-        <p class="sidebar-label">Overview</p>
-        <a href="../overview/dashboard.html">Dashboard</a>
-        <a href="../overview/insights.html">Insights</a>
-
-        <p class="sidebar-label">Operations</p>
-        <a href="patients.html">Patients</a>
-        <a href="manage-beds.html" class="active">Manage beds</a>
-        <a href="manage-rooms.html">Manage rooms</a>
-        <a href="users.html">Users</a>
-
-        <a href="../shared/login.html" class="logout-link">Logout</a>
-      </nav>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="dashboard-content">
-      <header class="topbar">
-        <div></div>
-        <div class="topbar-pill">
-          <span class="pill-label">Today</span>
-          <span class="pill-value" id="todayValue">—</span>
+      <div class="sidebar-user">
+        <div class="avatar-circle">JS</div>
+        <div class="user-meta">
+          <span class="user-name">John Smith</span>
+          <span class="user-role">Doctor</span>
         </div>
-      </header>
+      </div>
+    </div>
 
-      <section class="page-header">
-        <h2>Manage beds</h2>
-        <p class="page-subtitle">
-          Change bed status, assign patients, and mark beds for cleaning.
-        </p>
-      </section>
+    <nav class="sidebar-nav">
+      <p class="sidebar-label">Overview</p>
+      <a href="../overview/dashboard.html">Dashboard</a>
+      <a href="../overview/insights.html">Insights</a>
 
-      <!-- FILTER BAR -->
-      <section class="card beds-filter-card">
-        <select class="input-select" id="filterDept">
-          <option value="">All departments</option>
-        </select>
+      <p class="sidebar-label">Operations</p>
+      <a href="patients.html">Patients</a>
+      <a href="manage-beds.html" class="active">Manage beds</a>
+      <a href="manage-rooms.html">Manage rooms</a>
 
-        <select class="input-select" id="filterStatus">
-          <option value="">All statuses</option>
-        </select>
+      <a href="../shared/login.html" class="logout-link">Logout</a>
+    </nav>
+  </aside>
 
-        <button class="small-btn" id="applyFiltersBtn">Apply filters</button>
-      </section>
+  <!-- MAIN CONTENT -->
+  <main class="dashboard-content">
+    <header class="topbar">
+      <div></div>
+      <div class="topbar-pill">
+        <span class="pill-label">Today</span>
+        <span class="pill-value" id="todayValue">—</span>
+      </div>
+    </header>
 
-      <!-- TABLE -->
-      <section class="card">
-        <div class="table-wrapper">
-          <table class="data-table" id="bedsTable">
-            <thead>
-              <tr>
-                <th>Bed</th>
-                <th>Department</th>
-                <th>Room</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="bedsTbody">
-              <tr><td colspan="5" class="empty-row">Loading beds…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+    <section class="page-header">
+      <h2>Manage beds</h2>
+      <p class="page-subtitle">
+        View all beds, see which ward and room they belong to, and filter by status.
+      </p>
+    </section>
 
-    <!-- BASIC JS LOADER -->
-    <script>
-      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+    <!-- FILTER BAR -->
+    <section class="card beds-filter-card">
+      <select class="input-select" id="filterWard">
+        <option value="">All wards</option>
+      </select>
 
-      function setToday() {
-        const now = new Date();
-        document.getElementById("todayValue").textContent =
-          now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      <select class="input-select" id="filterStatus">
+        <option value="">All statuses</option>
+        <option value="available">Available</option>
+        <option value="occupied">Occupied</option>
+        <option value="reserved">Reserved</option>
+        <option value="cleaning">Cleaning</option>
+        <option value="transferring">Transferring</option>
+      </select>
+
+      <button class="small-btn" id="applyFiltersBtn">Apply filters</button>
+    </section>
+
+    <!-- TABLE -->
+    <section class="card">
+      <div class="table-wrapper">
+        <table class="data-table" id="bedsTable">
+          <thead>
+            <tr>
+              <th>Bed</th>
+              <th>Ward</th>
+              <th>Room</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="bedsTbody">
+            <tr><td colspan="5" class="empty-row">Loading beds…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- PAGE LOGIC -->
+  <script>
+    const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+    let ALL_BEDS = [];
+
+    function setToday() {
+      const now = new Date();
+      document.getElementById("todayValue").textContent =
+        now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    // Helper: derive room number from bed_number like "A101" -> "101"
+    function getRoomNumberFromBed(bedNumber) {
+      if (!bedNumber || typeof bedNumber !== "string") return "—";
+      // assume first character is building letter, rest is room
+      if (bedNumber.length > 1) {
+        return bedNumber.substring(1);
       }
+      return bedNumber;
+    }
 
-      async function loadBeds() {
-        try {
-          const res = await fetch(`${API_BASE}/beds`);
-          const beds = await res.json();
-          renderTable(beds);
-        } catch (err) {
-          console.error("Error loading beds:", err);
-        }
-      }
+    async function loadBeds() {
+      try {
+        const res = await fetch(\`\${API_BASE}/beds\`);
+        ALL_BEDS = await res.json();
 
-      function renderTable(beds) {
+        populateFilterOptions(ALL_BEDS);
+        renderTable(ALL_BEDS);
+      } catch (err) {
+        console.error("Error loading beds:", err);
         const tbody = document.getElementById("bedsTbody");
-        tbody.innerHTML = "";
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Failed to load beds.</td></tr>';
+      }
+    }
 
-        beds.forEach((b) => {
-          const row = document.createElement("tr");
+    function populateFilterOptions(beds) {
+      const wardSelect = document.getElementById("filterWard");
 
-          row.innerHTML = `
-            <td>Bed ${b.bed_number}</td>
-            <td>${b.department || "—"}</td>
-            <td>Room ${b.room_number || "—"}</td>
-            <td>
-              <span class="status-pill status-${b.bed_status}">${b.bed_status}</span>
-            </td>
-            <td class="actions-cell">
-              <button class="table-btn green">Mark cleaning</button>
-              <button class="table-btn navy">Discharge</button>
-            </td>
-          `;
+      // Extract unique ward names (fallback to "Ward X" if name missing)
+      const wards = [...new Set(
+        beds.map(b => b.ward_name || \`Ward \${b.ward_id}\`)
+      )];
 
-          tbody.appendChild(row);
-        });
+      wards.forEach(w => {
+        const opt = document.createElement("option");
+        opt.value = w;
+        opt.textContent = w;
+        wardSelect.appendChild(opt);
+      });
+    }
+
+    function renderTable(beds) {
+      const tbody = document.getElementById("bedsTbody");
+      tbody.innerHTML = "";
+
+      if (!beds.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No beds found</td></tr>';
+        return;
       }
 
-      window.addEventListener("load", () => {
-        setToday();
-        loadBeds();
+      beds.forEach(b => {
+        const row = document.createElement("tr");
+
+        const wardName = b.ward_name || \`Ward \${b.ward_id}\`;
+        const roomNumber = b.room_number || getRoomNumberFromBed(b.bed_number);
+
+        row.innerHTML = \`
+          <td>Bed \${b.bed_number}</td>
+          <td>\${wardName}</td>
+          <td>Room \${roomNumber}</td>
+          <td>
+            <span class="status-pill status-\${b.bed_status}">\${b.bed_status}</span>
+          </td>
+          <td class="actions-cell">
+            <button class="table-btn green">Mark cleaning</button>
+            <button class="table-btn navy">Discharge</button>
+          </td>
+        \`;
+
+        tbody.appendChild(row);
       });
-    </script>
-  </body>
+    }
+
+    function applyFilters() {
+      const ward = document.getElementById("filterWard").value;
+      const status = document.getElementById("filterStatus").value;
+
+      const filtered = ALL_BEDS.filter(b => {
+        const wardName = b.ward_name || \`Ward \${b.ward_id}\`;
+        const matchesWard = ward === "" || wardName === ward;
+        const matchesStatus = status === "" || b.bed_status === status;
+        return matchesWard && matchesStatus;
+      });
+
+      renderTable(filtered);
+    }
+
+    // Event listeners
+    document.getElementById("applyFiltersBtn").onclick = applyFilters;
+
+    window.onload = () => {
+      setToday();
+      loadBeds();
+    };
+  </script>
+</body>
 </html>

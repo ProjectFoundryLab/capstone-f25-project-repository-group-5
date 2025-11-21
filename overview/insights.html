@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Insights – Medbed Systems</title>
+
+    <!-- shared styles -->
+    <link rel="stylesheet" href="../shared/variables.css" />
+    <link rel="stylesheet" href="../shared/layout.css" />
+    <link rel="stylesheet" href="../shared/components.css" />
+    <!-- page-specific -->
+    <link rel="stylesheet" href="insights.css" />
+  </head>
+
+  <body class="dashboard-page">
+    <!-- ============= SIDEBAR ============= -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <img src="../images/Med.jpg" alt="Medbed Systems logo" class="brand-logo" />
+          <div class="logo-text">
+            <span>Medbed Systems</span>
+          </div>
+        </div>
+
+        <div class="sidebar-user">
+          <div class="avatar-circle">JS</div>
+          <div class="user-meta">
+            <span class="user-name">John Smith</span>
+            <span class="user-role">Doctor</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <p class="sidebar-label">Overview</p>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="insights.html" class="active">Insights</a>
+
+        <p class="sidebar-label">Operations</p>
+        <a href="../operations/patients.html">Patients</a>
+        <a href="../operations/manage-beds.html">Manage beds</a>
+        <a href="../operations/manage-rooms.html">Manage rooms</a>
+
+        <a href="../shared/login.html" class="logout-link">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- ============= MAIN CONTENT ============= -->
+    <main class="dashboard-content">
+      <header class="topbar">
+        <div></div>
+        <div class="topbar-pill">
+          <span class="pill-label">Today</span>
+          <span class="pill-value" id="todayValue">—</span>
+        </div>
+      </header>
+
+      <section class="page-header">
+        <h2>Insights</h2>
+        <p class="page-subtitle">
+          Predictive-style analytics for occupancy and patient trends using the current hospital data.
+        </p>
+      </section>
+
+      <!-- TOP: SUMMARY INSIGHT CARDS -->
+      <section class="insights-summary-row">
+        <!-- 1. Current occupancy -->
+        <div class="card insight-card">
+          <h3>Current occupancy</h3>
+          <p class="big-number">
+            <span id="occupancyPercent">—</span><span class="big-number-unit">%</span>
+          </p>
+          <p class="muted" id="occupancyDetail">
+            Based on all beds in the hospital.
+          </p>
+        </div>
+
+        <!-- 2. Busiest ward -->
+        <div class="card insight-card">
+          <h3>Busiest ward right now</h3>
+          <p class="big-number">
+            <span id="busiestWard">—</span>
+          </p>
+          <p class="muted" id="busiestWardDetail">
+            Ward with the most beds currently in use.
+          </p>
+        </div>
+
+        <!-- 3. COVID-19 case share -->
+        <div class="card insight-card">
+          <h3>COVID-19 case share</h3>
+          <p class="big-number">
+            <span id="covidPercent">—</span><span class="big-number-unit">%</span>
+          </p>
+          <p class="muted" id="covidDetail">
+            Patients admitted with COVID-19.
+          </p>
+        </div>
+      </section>
+
+      <!-- BOTTOM: CHART PLACEHOLDERS FOR GRAFANA -->
+      <section class="insights-chart-row">
+        <div class="card chart-card">
+          <h3>Forecasted daily admissions</h3>
+          <p class="muted">Grafana line chart will be embedded here.</p>
+          <div class="chart-placeholder">
+            Line chart placeholder — hook up Grafana here using mock data from GCP.
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <h3>Ward load (next 14 days)</h3>
+          <p class="muted">
+            Predicted occupancy by ICU North, General East, Isolation South.
+          </p>
+          <div class="chart-placeholder">
+            Bar / stacked chart placeholder — planned Grafana visualization.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============= PAGE LOGIC ============= -->
+    <script>
+      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+
+      // Same ward labels as dashboard
+      const WARD_LABELS = {
+        1: "ICU North",
+        2: "General East",
+        3: "Isolation South",
+      };
+
+      function setTodayInsights() {
+        const el = document.getElementById("todayValue");
+        const now = new Date();
+        el.textContent = now.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      }
+
+      async function loadInsights() {
+        try {
+          const [bedsRes, patientsRes] = await Promise.all([
+            fetch(`${API_BASE}/beds`),
+            fetch(`${API_BASE}/patients`),
+          ]);
+
+          const beds = bedsRes.ok ? await bedsRes.json() : [];
+          const patients = patientsRes.ok ? await patientsRes.json() : [];
+
+          updateOccupancyCard(beds);
+          updateBusiestWardCard(beds);
+          updateCovidCard(patients);
+        } catch (err) {
+          console.error("Error loading insights data:", err);
+        }
+      }
+
+      function updateOccupancyCard(beds) {
+        const totalBeds = beds.length;
+        const inUse = beds.filter((b) =>
+          ["occupied", "reserved", "cleaning", "transferring"].includes(
+            (b.bed_status || "").toLowerCase()
+          )
+        ).length;
+
+        const percent = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
+
+        document.getElementById("occupancyPercent").textContent = percent;
+        document.getElementById("occupancyDetail").textContent =
+          `${inUse} of ${totalBeds || 0} beds currently in use.`;
+      }
+
+      function updateBusiestWardCard(beds) {
+        const wardCounts = {};
+
+        beds.forEach((b) => {
+          const status = (b.bed_status || "").toLowerCase();
+          const inUse = ["occupied", "reserved", "cleaning", "transferring"].includes(status);
+          if (!inUse) return;
+
+          const wid = b.ward_id;
+          if (!wardCounts[wid]) wardCounts[wid] = 0;
+          wardCounts[wid] += 1;
+        });
+
+        let bestWardId = null;
+        let bestCount = 0;
+
+        Object.keys(wardCounts).forEach((wid) => {
+          if (wardCounts[wid] > bestCount) {
+            bestCount = wardCounts[wid];
+            bestWardId = wid;
+          }
+        });
+
+        const name =
+          bestWardId !== null
+            ? (WARD_LABELS[bestWardId] || `Ward ${bestWardId}`)
+            : "No ward data";
+
+        document.getElementById("busiestWard").textContent = name;
+        document.getElementById("busiestWardDetail").textContent =
+          bestWardId !== null
+            ? `${bestCount} beds in use in this ward.`
+            : "No beds are currently in use.";
+      }
+
+      function updateCovidCard(patients) {
+        const total = patients.length;
+
+        const covidCount = patients.filter((p) =>
+          (p.admit_reason || "").toLowerCase() === "covid-19"
+        ).length;
+
+        const percent = total ? Math.round((covidCount / total) * 100) : 0;
+
+        document.getElementById("covidPercent").textContent = percent;
+        document.getElementById("covidDetail").textContent =
+          `${covidCount} of ${total || 0} patients are admitted with COVID-19.`;
+      }
+
+      window.addEventListener("load", () => {
+        setTodayInsights();
+        loadInsights();
+      });
+    </script>
+  </body>
+</html>

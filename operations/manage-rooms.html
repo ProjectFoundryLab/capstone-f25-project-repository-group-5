@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Rooms – Medbed Systems</title>
+
+    <!-- shared styles -->
+    <link rel="stylesheet" href="../shared/variables.css" />
+    <link rel="stylesheet" href="../shared/layout.css" />
+    <link rel="stylesheet" href="../shared/components.css" />
+
+    <!-- page-specific -->
+    <link rel="stylesheet" href="manage-rooms.css" />
+  </head>
+
+  <body class="dashboard-page">
+    <!-- ========== SIDEBAR ========== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <img src="../images/Med.jpg" alt="Medbed Systems logo" class="brand-logo" />
+          <div class="logo-text">
+            <span>Medbed Systems</span>
+          </div>
+        </div>
+
+        <div class="sidebar-user">
+          <div class="avatar-circle">JS</div>
+          <div class="user-meta">
+            <span class="user-name">John Smith</span>
+            <span class="user-role">Doctor</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <p class="sidebar-label">Overview</p>
+        <a href="../overview/dashboard.html">Dashboard</a>
+        <a href="../overview/insights.html">Insights</a>
+
+        <p class="sidebar-label">Operations</p>
+        <a href="patients.html">Patients</a>
+        <a href="manage-beds.html">Manage beds</a>
+        <a href="manage-rooms.html" class="active">Manage rooms</a>
+
+        <a href="../shared/login.html" class="logout-link">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="dashboard-content">
+      <header class="topbar">
+        <div></div>
+        <div class="topbar-pill">
+          <span class="pill-label">Today</span>
+          <span class="pill-value" id="todayValue">—</span>
+        </div>
+      </header>
+
+      <section class="page-header">
+        <h2>Manage rooms</h2>
+        <p class="page-subtitle">
+          Browse all rooms by ward, building, and floor.
+        </p>
+      </section>
+
+      <!-- FILTER BAR -->
+      <section class="card rooms-filter-card">
+        <select class="input-select" id="filterWard">
+          <option value="">All wards</option>
+        </select>
+
+        <select class="input-select" id="filterBuilding">
+          <option value="">All buildings</option>
+        </select>
+
+        <select class="input-select" id="filterFloor">
+          <option value="">All floors</option>
+        </select>
+
+        <button class="small-btn" id="applyFiltersBtn">Apply filters</button>
+      </section>
+
+      <!-- ROOMS TABLE -->
+      <section class="card rooms-table-card">
+        <div class="table-wrapper">
+          <table class="data-table" id="roomsTable">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Ward</th>
+                <th>Building</th>
+                <th>Floor</th>
+                <th>Beds</th>
+              </tr>
+            </thead>
+            <tbody id="roomsTbody">
+              <tr>
+                <td colspan="5" class="empty-row">
+                  Loading rooms…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- ========== PAGE LOGIC ========== -->
+    <script>
+      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+      let ALL_ROOMS = [];
+
+      function setTodayRooms() {
+        const el = document.getElementById("todayValue");
+        if (!el) return;
+        const now = new Date();
+        el.textContent = now.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      }
+
+      async function loadRooms() {
+        const tbody = document.getElementById("roomsTbody");
+        try {
+          const res = await fetch(\`\${API_BASE}/rooms\`);
+          if (!res.ok) {
+            throw new Error("Failed to load rooms");
+          }
+
+          const data = await res.json();
+          ALL_ROOMS = data || [];
+
+          populateRoomFilters(ALL_ROOMS);
+          renderRoomsTable(ALL_ROOMS);
+        } catch (err) {
+          console.error("Error loading rooms:", err);
+          if (tbody) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="5" class="empty-row">
+                  Unable to load rooms from backend.
+                </td>
+              </tr>
+            `;
+          }
+        }
+      }
+
+      function populateRoomFilters(rooms) {
+        const wardSelect = document.getElementById("filterWard");
+        const buildingSelect = document.getElementById("filterBuilding");
+        const floorSelect = document.getElementById("filterFloor");
+
+        // Clear any existing dynamic options
+        wardSelect.innerHTML = '<option value="">All wards</option>';
+        buildingSelect.innerHTML = '<option value="">All buildings</option>';
+        floorSelect.innerHTML = '<option value="">All floors</option>';
+
+        const wardSet = new Set();
+        const buildingSet = new Set();
+        const floorSet = new Set();
+
+        rooms.forEach((r) => {
+          const wardName = r.name || \`Ward \${r.ward_id}\`;
+          if (wardName) wardSet.add(wardName);
+
+          if (r.building) buildingSet.add(r.building);
+          if (r.floor_number !== undefined && r.floor_number !== null) {
+            floorSet.add(r.floor_number);
+          }
+        });
+
+        Array.from(wardSet).sort().forEach((w) => {
+          const opt = document.createElement("option");
+          opt.value = w;
+          opt.textContent = w;
+          wardSelect.appendChild(opt);
+        });
+
+        Array.from(buildingSet).sort().forEach((b) => {
+          const opt = document.createElement("option");
+          opt.value = b;
+          opt.textContent = b;
+          buildingSelect.appendChild(opt);
+        });
+
+        Array.from(floorSet).sort((a, b) => a - b).forEach((f) => {
+          const opt = document.createElement("option");
+          opt.value = f;
+          opt.textContent = f;
+          floorSelect.appendChild(opt);
+        });
+      }
+
+      function renderRoomsTable(rooms) {
+        const tbody = document.getElementById("roomsTbody");
+        tbody.innerHTML = "";
+
+        if (!rooms || rooms.length === 0) {
+          const row = document.createElement("tr");
+          const cell = document.createElement("td");
+          cell.colSpan = 5;
+          cell.className = "empty-row";
+          cell.textContent = "No rooms match the current filters.";
+          row.appendChild(cell);
+          tbody.appendChild(row);
+          return;
+        }
+
+        rooms.forEach((r) => {
+          const row = document.createElement("tr");
+
+          const roomNumber = r.room_number ?? "—";
+          const wardName = r.name || \`Ward \${r.ward_id}\`;
+          const building = r.building || "—";
+          const floor = (r.floor_number !== undefined && r.floor_number !== null)
+            ? r.floor_number
+            : "—";
+          const beds = r.num_beds ?? "—";
+
+          row.innerHTML = `
+            <td>Room ${roomNumber}</td>
+            <td>${wardName}</td>
+            <td>${building}</td>
+            <td>${floor}</td>
+            <td>${beds}</td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      function applyRoomFilters() {
+        const wardVal = document.getElementById("filterWard").value;
+        const buildingVal = document.getElementById("filterBuilding").value;
+        const floorVal = document.getElementById("filterFloor").value;
+
+        const filtered = ALL_ROOMS.filter((r) => {
+          const wardName = r.name || \`Ward \${r.ward_id}\`;
+          const building = r.building || "";
+          const floor = r.floor_number;
+
+          const matchesWard = !wardVal || wardName === wardVal;
+          const matchesBuilding = !buildingVal || building === buildingVal;
+          const matchesFloor =
+            !floorVal ||
+            (floor !== undefined && floor !== null && String(floor) === String(floorVal));
+
+          return matchesWard && matchesBuilding && matchesFloor;
+        });
+
+        renderRoomsTable(filtered);
+      }
+
+      window.addEventListener("load", () => {
+        setTodayRooms();
+        loadRooms();
+      });
+
+      document.getElementById("applyFiltersBtn").addEventListener("click", applyRoomFilters);
+    </script>
+  </body>
+</html>

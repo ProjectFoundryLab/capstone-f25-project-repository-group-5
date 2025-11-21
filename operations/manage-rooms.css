@@ -1,0 +1,35 @@
+/* Layout for Manage Rooms filter bar */
+.rooms-filter-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Make selects share the width nicely */
+.rooms-filter-card .input-select {
+  min-width: 140px;
+}
+
+/* Let the first dropdown stretch a bit more (ward) */
+#filterWard {
+  flex: 1;
+}
+
+/* Rooms table card just reuses .card styles, but we can tweak spacing if needed */
+.rooms-table-card {
+  margin-top: 4px;
+}
+
+/* Responsive: stack filters on smaller screens */
+@media (max-width: 900px) {
+  .rooms-filter-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rooms-filter-card .input-select,
+  .rooms-filter-card .small-btn {
+    width: 100%;
+  }
+}

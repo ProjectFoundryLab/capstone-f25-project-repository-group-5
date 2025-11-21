@@ -1,0 +1,57 @@
+/* Layout for the top 3 insight cards */
+.insights-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.insight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Make sure big numbers look nice */
+.insight-card .big-number {
+  font-size: 32px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* Bottom row with the 2 chart placeholders */
+.insights-chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Dashed box for future Grafana charts */
+.chart-placeholder {
+  margin-top: 8px;
+  height: 230px;
+  border-radius: 12px;
+  border: 1px dashed #d5d5e0;
+  background: #f5f7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  padding: 0 28px;
+}
+
+/* Stack cards on small screens */
+@media (max-width: 900px) {
+  .insights-chart-row {
+    grid-template-columns: 1fr;
+  }
+}

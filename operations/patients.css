@@ -6,7 +6,7 @@
   gap: 16px;
 }
 
-/* Filters row on patients page */
+/* Filter controls */
 .patients-filters {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr auto;
@@ -19,8 +19,59 @@
   width: 100%;
 }
 
+/* Clickable table rows */
+.clickable-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.clickable-row:hover {
+  background: #f5f6ff;
+}
+
+/* Drawer styling */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 350px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -6px 0 16px rgba(0, 0, 0, 0.12);
+  padding: 24px;
+  transition: right 0.25s ease;
+  z-index: 1000;
+}
+
+.drawer.open {
+  right: 0;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.drawer-content p {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
 @media (max-width: 900px) {
   .patients-filters {
     grid-template-columns: 1fr;
+  }
+
+  .drawer {
+    width: 100%;
   }
 }
