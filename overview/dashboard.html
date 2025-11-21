@@ -495,11 +495,12 @@ window.addEventListener("load", () => {
       apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
       authDomain: "sqldatabasetest-473020.firebaseapp.com",
       projectId: "sqldatabasetest-473020",
-      storageBucket: "sqldatabasetest-473020.firebasestorage.app",
+      storageBucket: "sqldatabasetest-473020.appspot.com",  // ← FIXED
       messagingSenderId: "725327609427",
       appId: "1:725327609427:web:989af1506e170afc0650a6",
       measurementId: "G-WCZ3JSGH71"
     };
+
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
