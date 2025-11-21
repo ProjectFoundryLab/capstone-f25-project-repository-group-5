@@ -171,14 +171,13 @@
     </select>
 
     <!-- NEW: Patient ID input (used when status = occupied) -->
-    <input
-      id="patientIdInput"
-      class="input-select"
-      type="number"
-      min="1"
-      placeholder="Patient ID (only for 'Occupied')"
-      style="max-width: 180px;"
-    />
+    <input 
+  id="patientIdInput"
+  class="input-select"
+  placeholder="Patient ID (only required if Occupied)"
+  style="max-width:180px;"
+/>
+
 
     <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
   </div>
@@ -412,23 +411,25 @@ document.getElementById("statusSelect").addEventListener("change", showPatientAs
 // Update bed (write to DB)
 // ------------------------------
 async function updateBed() {
-  const bedNumber = document.getElementById("bedSelect").value;
+  const bedId = parseInt(document.getElementById("bedSelect").value);
+  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
+  const bedNumber = option?.dataset.bedNumber;
+
   const new_status = document.getElementById("statusSelect").value;
   const patientIdInput = document.getElementById("patientIdInput");
 
-  if (!bedNumber) {
-    alert("Please select a bed first.");
+  if (!bedId || !bedNumber) {
+    alert("Missing bed_id or bed_number");
     return;
   }
 
-  // Decide what patient_id to send
   let patient_id = null;
 
   if (new_status === "available") {
-    // Clearing the bed – wipe patient_id
     patient_id = null;
-    patientIdInput.value = ""; // clear the box in UI too
-  } else if (new_status === "occupied") {
+    if (patientIdInput) patientIdInput.value = "";
+  } 
+  else if (new_status === "occupied") {
     const raw = (patientIdInput.value || "").trim();
     if (!raw) {
       alert("When setting a bed to 'Occupied', you must enter a patient ID.");
@@ -440,8 +441,8 @@ async function updateBed() {
       return;
     }
     patient_id = parsed;
-  } else {
-    // For reserved/cleaning/transferring we send whatever is typed, or null if empty
+  } 
+  else {
     const raw = (patientIdInput.value || "").trim();
     patient_id = raw ? parseInt(raw, 10) : null;
   }
@@ -451,7 +452,7 @@ async function updateBed() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber,   // match backend: we now update by bed_number
+        bed_id: bedId,
         bed_status: new_status,
         patient_id: patient_id,
       }),
@@ -460,21 +461,20 @@ async function updateBed() {
     const text = await res.text();
     if (!res.ok) {
       alert(text || "Error updating bed");
-      console.error("Update error:", text);
       return;
     }
 
-    alert(text);
+    alert("Bed updated successfully");
+    loadBeds();
+    loadBedInfo(bedNumber);
+    loadPatientInfo(bedNumber);
 
-    // Refresh panels
-    await loadBedInfo(bedNumber);
-    await loadPatientInfo(bedNumber);
-    await loadBeds(); // refresh counts & dropdown
   } catch (err) {
     console.error("Error updating bed:", err);
-    alert("Error updating bed");
+    alert("Failed to update bed.");
   }
 }
+
 
 
 window.addEventListener("load", () => {
