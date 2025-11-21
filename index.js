@@ -364,22 +364,68 @@ app.get("/beds", async (req, res) => {
   }
 });
 
+// ================================================================
+// UPDATE BED + PATIENT ASSIGNMENT
+// ================================================================
 app.post("/beds/update", async (req, res) => {
   const { bed_id, bed_status, patient_id } = req.body;
+
   if (!bed_id) return res.status(400).send("Missing bed_id");
 
   try {
     const conn = await getDbConnection();
+
+    //  If bed is set to "available", remove patient assignment
+    let finalPatient = toIntOrNull(patient_id);
+    if (bed_status === "available") {
+      finalPatient = null;
+
+      // close any admissions tied to this bed
+      await conn.query(
+        `UPDATE admissions 
+         SET discharge_date = CURDATE(),
+             discharge_time = CURTIME(),
+             disposition = 'Discharged'
+         WHERE bed_id = ? AND discharge_date IS NULL`,
+        [bed_id]
+      );
+    }
+
+    //  If bed is "occupied", we require a patient ID
+    if (bed_status === "occupied" && !finalPatient) {
+      await conn.end();
+      return res.status(400).send("Occupied beds must have a patient_id");
+    }
+
+    // 3️ Update bed record
     await conn.query(
       "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
-      [bed_status, toIntOrNull(patient_id), bed_id]
+      [bed_status, finalPatient, bed_id]
     );
+
+    //  Create admission if occupied
+    if (bed_status === "occupied") {
+      await conn.query(
+        `INSERT INTO admissions (
+            patient_id, ward_id, bed_id,
+            admission_date, admission_time,
+            admission_reason, disposition
+        )
+        SELECT ?, ward_id, bed_id, CURDATE(), CURTIME(), 'Auto-assigned', 'Admitted'
+        FROM beds WHERE bed_id = ?`,
+        [finalPatient, bed_id]
+      );
+    }
+
     await conn.end();
-    res.send(" Bed updated successfully");
+    res.send("Bed updated successfully");
+
   } catch (err) {
+    console.error(err);
     res.status(500).send("Error updating bed");
   }
 });
+
 
 app.get("/beds/:bedNumber", async (req, res) => {
   try {
