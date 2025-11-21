@@ -35,6 +35,7 @@ body.login-page {
 /* input fields */
 .input-field {
   width: 85%;
+  max-width: 260px;
   padding: 10px 12px;
   margin: 0 auto 15px auto;
   margin-bottom: 15px;
