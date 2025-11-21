@@ -151,16 +151,39 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-      <section class="card">
-        <h3>Update bed status</h3>
-        <p class="muted">
-          Choose a bed and update its current status.
-        </p>
+     <section class="card">
+  <h3>Update bed status</h3>
+  <p class="muted">
+    Choose a bed and update its current status.
+  </p>
 
-        <div class="filters-row">
-          <select id="bedSelect" class="input-select">
-            <option>Loading beds…</option>
-          </select>
+  <div class="filters-row">
+    <select id="bedSelect" class="input-select">
+      <option>Loading beds…</option>
+    </select>
+
+    <select id="statusSelect" class="input-select">
+      <option value="available">Available</option>
+      <option value="occupied">Occupied</option>
+      <option value="reserved">Reserved</option>
+      <option value="cleaning">Cleaning</option>
+      <option value="transferring">Transferring</option>
+    </select>
+
+    <!-- NEW: Patient ID input (used when status = occupied) -->
+    <input
+      id="patientIdInput"
+      class="input-select"
+      type="number"
+      min="1"
+      placeholder="Patient ID (only for 'Occupied')"
+      style="max-width: 180px;"
+    />
+
+    <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+  </div>
+</section>
+
 
           <select id="statusSelect" class="input-select">
             <option value="available">Available</option>
@@ -389,17 +412,37 @@ document.getElementById("statusSelect").addEventListener("change", showPatientAs
 // ------------------------------
 async function updateBed() {
   const bedNumber = document.getElementById("bedSelect").value;
-  const newStatus = document.getElementById("statusSelect").value;
+  const new_status = document.getElementById("statusSelect").value;
+  const patientIdInput = document.getElementById("patientIdInput");
 
-  let patientId = null;
+  if (!bedNumber) {
+    alert("Please select a bed first.");
+    return;
+  }
 
-  // If occupied → require entering a patient ID
-  if (newStatus === "occupied") {
-    patientId = document.getElementById("assignPatientId").value.trim();
-    if (patientId === "") {
-      alert("Enter a patient ID to assign.");
+  // Decide what patient_id to send
+  let patient_id = null;
+
+  if (new_status === "available") {
+    // Clearing the bed – wipe patient_id
+    patient_id = null;
+    patientIdInput.value = ""; // clear the box in UI too
+  } else if (new_status === "occupied") {
+    const raw = (patientIdInput.value || "").trim();
+    if (!raw) {
+      alert("When setting a bed to 'Occupied', you must enter a patient ID.");
       return;
     }
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      alert("Patient ID must be a positive number.");
+      return;
+    }
+    patient_id = parsed;
+  } else {
+    // For reserved/cleaning/transferring we send whatever is typed, or null if empty
+    const raw = (patientIdInput.value || "").trim();
+    patient_id = raw ? parseInt(raw, 10) : null;
   }
 
   try {
@@ -407,22 +450,31 @@ async function updateBed() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_id: bedNumber,
-        bed_status: newStatus,
-        patient_id: patientId ? Number(patientId) : null
-      })
+        bed_number: bedNumber,   // match backend: we now update by bed_number
+        bed_status: new_status,
+        patient_id: patient_id,
+      }),
     });
 
-    alert(await res.text());
+    const text = await res.text();
+    if (!res.ok) {
+      alert(text || "Error updating bed");
+      console.error("Update error:", text);
+      return;
+    }
 
-    loadBedInfo(bedNumber);
-    loadPatientInfo(bedNumber);
-    loadBeds(); // refresh cards
+    alert(text);
 
+    // Refresh panels
+    await loadBedInfo(bedNumber);
+    await loadPatientInfo(bedNumber);
+    await loadBeds(); // refresh counts & dropdown
   } catch (err) {
     console.error("Error updating bed:", err);
+    alert("Error updating bed");
   }
 }
+
 
 window.addEventListener("load", () => {
   setToday();
