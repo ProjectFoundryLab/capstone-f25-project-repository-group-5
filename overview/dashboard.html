@@ -206,226 +206,229 @@
     <!-- =========================
          SCRIPTS
          ========================= -->
-    <script>
-      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+ <script>
+const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
 
-      const WARD_LABELS = {
-        1: "ICU North",
-        2: "General East",
-        3: "Isolation South",
-      };
+const WARD_LABELS = {
+  1: "ICU North",
+  2: "General East",
+  3: "Isolation South"
+};
 
-      let ALL_BEDS = [];
+let ALL_BEDS = [];
 
-      function setToday() {
-        const el = document.getElementById("todayValue");
-        const now = new Date();
-        el.textContent = now.toLocaleString("en-US", { month: "short", day: "numeric" });
-      }
+// ------------------------------
+// Today display
+// ------------------------------
+function setToday() {
+  const el = document.getElementById("todayValue");
+  const now = new Date();
+  el.textContent = now.toLocaleString("en-US", { month: "short", day: "numeric" });
+}
 
-      async function loadBeds() {
-        try {
-          const res = await fetch(`${API_BASE}/beds`);
-          const beds = await res.json();
-          ALL_BEDS = beds || [];
+// ------------------------------
+// Load beds
+// ------------------------------
+async function loadBeds() {
+  try {
+    const res = await fetch(`${API_BASE}/beds`);
+    ALL_BEDS = await res.json();
 
-          const select = document.getElementById("bedSelect");
-          select.innerHTML = "";
+    const select = document.getElementById("bedSelect");
+    select.innerHTML = "";
 
-          ALL_BEDS.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.bed_number;
-            const wardLabel = WARD_LABELS[b.ward_id] || `Ward ${b.ward_id}`;
-            opt.textContent = `Bed ${b.bed_number} (${wardLabel})`;
-            select.appendChild(opt);
-          });
+    ALL_BEDS.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.bed_number;
+      opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
+      select.appendChild(opt);
+    });
 
-          if (ALL_BEDS.length > 0) {
-            const first = ALL_BEDS[0].bed_number;
-            loadBedInfo(first);
-            loadPatientInfo(first);
-          }
+    if (ALL_BEDS.length > 0) {
+      loadBedInfo(ALL_BEDS[0].bed_number);
+      loadPatientInfo(ALL_BEDS[0].bed_number);
+    }
 
-          updateOverviewCards();
+    updateOverviewCards();
 
-          select.addEventListener("change", (e) => {
-            const bedNum = e.target.value;
-            loadBedInfo(bedNum);
-            loadPatientInfo(bedNum);
-          });
-        } catch (err) {
-          console.error("Error loading beds:", err);
-          const select = document.getElementById("bedSelect");
-          select.innerHTML = "<option>Failed to load beds</option>";
-        }
-      }
+    // Event: change bed
+    select.addEventListener("change", e => {
+      loadBedInfo(e.target.value);
+      loadPatientInfo(e.target.value);
+    });
 
-      function updateOverviewCards() {
-        const totalBeds = ALL_BEDS.length;
-        const counts = {
-          available: 0,
-          occupied: 0,
-          reserved: 0,
-          cleaning: 0,
-          transferring: 0,
-        };
+  } catch (err) {
+    console.error("Error loading beds:", err);
+  }
+}
 
-        ALL_BEDS.forEach((b) => {
-          if (counts[b.bed_status] !== undefined) {
-            counts[b.bed_status] += 1;
-          }
-        });
+// ------------------------------
+// Overview top cards
+// ------------------------------
+function updateOverviewCards() {
+  const totalBeds = ALL_BEDS.length;
 
-        const bedsInUse = counts.occupied + counts.transferring;
-        const occupancyPct = totalBeds ? Math.round((bedsInUse / totalBeds) * 100) : 0;
+  const counts = {
+    available: 0,
+    occupied: 0,
+    reserved: 0,
+    cleaning: 0,
+    transferring: 0
+  };
 
-        document.getElementById("overallTotalBeds").textContent = totalBeds;
-        document.getElementById("overallOccupiedBeds").textContent = bedsInUse;
-        document.getElementById("overallOccupancyPercent").textContent = occupancyPct;
+  ALL_BEDS.forEach(b => {
+    if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
+  });
 
-        document.getElementById("countAvailable").textContent = counts.available;
-        document.getElementById("countOccupied").textContent = counts.occupied;
-        document.getElementById("countReserved").textContent = counts.reserved;
-        document.getElementById("countCleaning").textContent = counts.cleaning;
-        document.getElementById("countTransferring").textContent = counts.transferring;
+  const inUse = counts.occupied + counts.transferring;
+  const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
 
-        const wardStats = {};
+  document.getElementById("overallTotalBeds").textContent = totalBeds;
+  document.getElementById("overallOccupiedBeds").textContent = inUse;
+  document.getElementById("overallOccupancyPercent").textContent = pct;
 
-        ALL_BEDS.forEach((b) => {
-          const wid = b.ward_id;
-          if (!wardStats[wid]) {
-            wardStats[wid] = {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          }
-          wardStats[wid].total += 1;
-          if (wardStats[wid][b.bed_status] !== undefined) {
-            wardStats[wid][b.bed_status] += 1;
-          }
-        });
+  document.getElementById("countAvailable").textContent = counts.available;
+  document.getElementById("countOccupied").textContent = counts.occupied;
+  document.getElementById("countReserved").textContent = counts.reserved;
+  document.getElementById("countCleaning").textContent = counts.cleaning;
+  document.getElementById("countTransferring").textContent = counts.transferring;
 
-        ["1", "2", "3"].forEach((wid) => {
-          const stats =
-            wardStats[wid] || {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
+  // per-ward summary
+  const wardStats = {};
+  ALL_BEDS.forEach(b => {
+    const wid = b.ward_id;
+    if (!wardStats[wid]) {
+      wardStats[wid] = { total: 0, occupied: 0, available: 0, reserved: 0, cleaning: 0, transferring: 0 };
+    }
+    wardStats[wid].total++;
+    if (wardStats[wid][b.bed_status] !== undefined) wardStats[wid][b.bed_status]++;
+  });
 
-          const inUse = stats.occupied + stats.transferring;
-          const available = stats.available;
-          const total = stats.total;
+  ["1", "2", "3"].forEach(wid => {
+    const s = wardStats[wid] || { total: 0, occupied: 0, available: 0, reserved: 0, cleaning: 0, transferring: 0 };
+    document.getElementById(`ward-${wid}-total`).textContent = s.total;
+    document.getElementById(`ward-${wid}-inuse`).textContent = s.occupied + s.transferring;
+    document.getElementById(`ward-${wid}-available`).textContent = s.available;
+  });
+}
 
-          const nameEl = document.getElementById(`ward-${wid}-name`);
-          const totalEl = document.getElementById(`ward-${wid}-total`);
-          const inUseEl = document.getElementById(`ward-${wid}-inuse`);
-          const availEl = document.getElementById(`ward-${wid}-available`);
+// ------------------------------
+// Load bed details
+// ------------------------------
+async function loadBedInfo(bedNumber) {
+  try {
+    const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
+    const data = await res.json();
 
-          if (nameEl) nameEl.textContent = WARD_LABELS[wid] || `Ward ${wid}`;
-          if (totalEl) totalEl.textContent = total;
-          if (inUseEl) inUseEl.textContent = inUse;
-          if (availEl) availEl.textContent = available;
-        });
-      }
+    const box = document.getElementById("bedInfoBox");
+    const content = document.getElementById("bedInfoContent");
 
-      async function loadBedInfo(bedNumber) {
-        if (!bedNumber) return;
-        try {
-          const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
-          const data = await res.json();
+    box.style.display = "block";
+    content.innerHTML = `
+      <strong>Bed number:</strong> ${data.bed_number}<br>
+      <strong>Status:</strong> ${data.bed_status}<br>
+      <strong>Type:</strong> ${data.bed_type}<br>
+      <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
+      <strong>Patient assigned:</strong> ${data.patient_id ?? "None"}
+    `;
 
-          const box = document.getElementById("bedInfoBox");
-          const content = document.getElementById("bedInfoContent");
+  } catch (err) {
+    console.error("Error loading bed info:", err);
+  }
+}
 
-          box.style.display = "block";
-          content.innerHTML = `
-            <strong>Bed number:</strong> ${data.bed_number}<br>
-            <strong>Status:</strong> ${data.bed_status}<br>
-            <strong>Type:</strong> ${data.bed_type}<br>
-            <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
-            <strong>Patient assigned:</strong> ${data.patient_id ?? "None"}
-          `;
-        } catch (err) {
-          console.error("Error loading bed info:", err);
-        }
-      }
+// ------------------------------
+// Load patient details
+// ------------------------------
+async function loadPatientInfo(bedNumber) {
+  const box = document.getElementById("patientInfo");
 
-      async function loadPatientInfo(bedNumber) {
-        const patientBox = document.getElementById("patientInfo");
-        if (!bedNumber) {
-          patientBox.style.display = "none";
-          return;
-        }
+  try {
+    const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
+    if (!res.ok) {
+      box.style.display = "none";
+      return;
+    }
 
-        try {
-          const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
-          if (!res.ok) {
-            patientBox.style.display = "none";
-            return;
-          }
+    const d = await res.json();
 
-          const data = await res.json();
+    document.getElementById("pi_id").textContent = d.patient_id ?? "None";
+    document.getElementById("pi_name").textContent = d.first_name
+      ? `${d.first_name} ${d.last_name}`
+      : "No patient assigned";
+    document.getElementById("pi_status").textContent = d.admission_status ?? "N/A";
+    document.getElementById("pi_bed_status").textContent = d.bed_status;
+    document.getElementById("pi_bed_type").textContent = d.bed_type;
+    document.getElementById("pi_ward").textContent = d.ward_name;
 
-          document.getElementById("pi_id").textContent = data.patient_id ?? "None";
-          document.getElementById("pi_name").textContent = data.first_name
-            ? `${data.first_name} ${data.last_name}`
-            : "No patient assigned";
-          document.getElementById("pi_status").textContent = data.admission_status ?? "N/A";
-          document.getElementById("pi_bed_status").textContent = data.bed_status;
-          document.getElementById("pi_bed_type").textContent = data.bed_type;
-          document.getElementById("pi_ward").textContent = data.ward_name;
+    box.style.display = "block";
+  } catch (err) {
+    console.error("Error loading patient info:", err);
+    box.style.display = "none";
+  }
+}
 
-          patientBox.style.display = "block";
-        } catch (err) {
-          console.error("Error loading patient info:", err);
-          patientBox.style.display = "none";
-        }
-      }
+// ------------------------------
+// Show or hide assign patient box
+// ------------------------------
+function showPatientAssignBox() {
+  const status = document.getElementById("statusSelect").value;
+  const assignBox = document.getElementById("patientAssignBox");
 
-      async function updateBed() {
-        const bedNumber = document.getElementById("bedSelect").value;
-        const new_status = document.getElementById("statusSelect").value;
+  if (status === "occupied") {
+    assignBox.style.display = "block";
+  } else {
+    assignBox.style.display = "none";
+  }
+}
 
-        if (!bedNumber) {
-          alert("Please select a bed first.");
-          return;
-        }
+document.getElementById("statusSelect").addEventListener("change", showPatientAssignBox);
 
-        try {
-          const res = await fetch(`${API_BASE}/beds/update`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bed_id: bedNumber,
-              bed_status: new_status,
-              patient_id: null,
-            }),
-          });
+// ------------------------------
+// Update bed (write to DB)
+// ------------------------------
+async function updateBed() {
+  const bedNumber = document.getElementById("bedSelect").value;
+  const newStatus = document.getElementById("statusSelect").value;
 
-          const text = await res.text();
-          alert(text);
+  let patientId = null;
 
-          loadBedInfo(bedNumber);
-          loadPatientInfo(bedNumber);
-          loadBeds();
-        } catch (err) {
-          console.error("Error updating bed:", err);
-          alert("Failed to update bed.");
-        }
-      }
+  // If occupied → require entering a patient ID
+  if (newStatus === "occupied") {
+    patientId = document.getElementById("assignPatientId").value.trim();
+    if (patientId === "") {
+      alert("Enter a patient ID to assign.");
+      return;
+    }
+  }
 
-      window.addEventListener("load", () => {
-        setToday();
-        loadBeds();
-      });
-    </script>
+  try {
+    const res = await fetch(`${API_BASE}/beds/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bed_id: bedNumber,
+        bed_status: newStatus,
+        patient_id: patientId ? Number(patientId) : null
+      })
+    });
+
+    alert(await res.text());
+
+    loadBedInfo(bedNumber);
+    loadPatientInfo(bedNumber);
+    loadBeds(); // refresh cards
+
+  } catch (err) {
+    console.error("Error updating bed:", err);
+  }
+}
+
+window.addEventListener("load", () => {
+  setToday();
+  loadBeds();
+});
+</script>
+
   </body>
 </html>
