@@ -113,3 +113,9 @@
 .page-section {
   margin-bottom: 40px;
 }
+
+.top-row {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  gap: 24px;
+}
