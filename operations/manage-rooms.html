@@ -31,7 +31,6 @@
             <span class="user-name" id="userName">Loading...</span>
             <span class="user-role" id="userRole">Role...</span>
           </div>
-
         </div>
       </div>
 
@@ -123,16 +122,62 @@
         });
       }
 
+      // derive room number from bed_number like "A101" -> "101"
+      function getRoomNumberFromBed(bedNumber) {
+        if (!bedNumber || typeof bedNumber !== "string") return "—";
+        if (bedNumber.length > 1) {
+          return bedNumber.substring(1);
+        }
+        return bedNumber;
+      }
+
       async function loadRooms() {
         const tbody = document.getElementById("roomsTbody");
         try {
-          const res = await fetch(\`\${API_BASE}/rooms\`);
-          if (!res.ok) {
-            throw new Error("Failed to load rooms");
+          // use beds + wards (this was your working pattern)
+          const [bedsRes, wardsRes] = await Promise.all([
+            fetch(`${API_BASE}/beds`),
+            fetch(`${API_BASE}/wards`),
+          ]);
+
+          if (!bedsRes.ok || !wardsRes.ok) {
+            throw new Error("Failed to load beds or wards");
           }
 
-          const data = await res.json();
-          ALL_ROOMS = data || [];
+          const beds = await bedsRes.json();
+          const wards = await wardsRes.json();
+
+          // build map ward_id -> ward info
+          const wardMap = {};
+          wards.forEach((w) => {
+            wardMap[w.ward_id] = w;
+          });
+
+          // build room summary from beds
+          const roomMap = {};
+          beds.forEach((b) => {
+            const roomNumber = getRoomNumberFromBed(b.bed_number);
+            const ward = wardMap[b.ward_id] || {};
+            const key = `${b.ward_id || "none"}:${roomNumber}`;
+
+            if (!roomMap[key]) {
+              roomMap[key] = {
+                room_number: roomNumber,
+                ward_id: b.ward_id,
+                ward_name: ward.name || `Ward ${b.ward_id ?? "—"}`,
+                building: ward.building || "—",
+                floor_number:
+                  ward.floor_number !== undefined && ward.floor_number !== null
+                    ? ward.floor_number
+                    : "—",
+                num_beds: 0,
+              };
+            }
+
+            roomMap[key].num_beds += 1;
+          });
+
+          ALL_ROOMS = Object.values(roomMap);
 
           populateRoomFilters(ALL_ROOMS);
           renderRoomsTable(ALL_ROOMS);
@@ -155,7 +200,8 @@
         const buildingSelect = document.getElementById("filterBuilding");
         const floorSelect = document.getElementById("filterFloor");
 
-        // Clear any existing dynamic options
+        if (!wardSelect || !buildingSelect || !floorSelect) return;
+
         wardSelect.innerHTML = '<option value="">All wards</option>';
         buildingSelect.innerHTML = '<option value="">All buildings</option>';
         floorSelect.innerHTML = '<option value="">All floors</option>';
@@ -165,39 +211,43 @@
         const floorSet = new Set();
 
         rooms.forEach((r) => {
-          const wardName = r.name || \`Ward \${r.ward_id}\`;
-          if (wardName) wardSet.add(wardName);
-
-          if (r.building) buildingSet.add(r.building);
-          if (r.floor_number !== undefined && r.floor_number !== null) {
-            floorSet.add(r.floor_number);
-          }
+          if (r.ward_name) wardSet.add(r.ward_name);
+          if (r.building && r.building !== "—") buildingSet.add(r.building);
+          if (r.floor_number !== "—") floorSet.add(r.floor_number);
         });
 
-        Array.from(wardSet).sort().forEach((w) => {
-          const opt = document.createElement("option");
-          opt.value = w;
-          opt.textContent = w;
-          wardSelect.appendChild(opt);
-        });
+        Array.from(wardSet)
+          .sort()
+          .forEach((w) => {
+            const opt = document.createElement("option");
+            opt.value = w;
+            opt.textContent = w;
+            wardSelect.appendChild(opt);
+          });
 
-        Array.from(buildingSet).sort().forEach((b) => {
-          const opt = document.createElement("option");
-          opt.value = b;
-          opt.textContent = b;
-          buildingSelect.appendChild(opt);
-        });
+        Array.from(buildingSet)
+          .sort()
+          .forEach((b) => {
+            const opt = document.createElement("option");
+            opt.value = b;
+            opt.textContent = b;
+            buildingSelect.appendChild(opt);
+          });
 
-        Array.from(floorSet).sort((a, b) => a - b).forEach((f) => {
-          const opt = document.createElement("option");
-          opt.value = f;
-          opt.textContent = f;
-          floorSelect.appendChild(opt);
-        });
+        Array.from(floorSet)
+          .sort((a, b) => a - b)
+          .forEach((f) => {
+            const opt = document.createElement("option");
+            opt.value = f;
+            opt.textContent = f;
+            floorSelect.appendChild(opt);
+          });
       }
 
       function renderRoomsTable(rooms) {
         const tbody = document.getElementById("roomsTbody");
+        if (!tbody) return;
+
         tbody.innerHTML = "";
 
         if (!rooms || rooms.length === 0) {
@@ -214,20 +264,12 @@
         rooms.forEach((r) => {
           const row = document.createElement("tr");
 
-          const roomNumber = r.room_number ?? "—";
-          const wardName = r.name || \`Ward \${r.ward_id}\`;
-          const building = r.building || "—";
-          const floor = (r.floor_number !== undefined && r.floor_number !== null)
-            ? r.floor_number
-            : "—";
-          const beds = r.num_beds ?? "—";
-
           row.innerHTML = `
-            <td>Room ${roomNumber}</td>
-            <td>${wardName}</td>
-            <td>${building}</td>
-            <td>${floor}</td>
-            <td>${beds}</td>
+            <td>Room ${r.room_number}</td>
+            <td>${r.ward_name}</td>
+            <td>${r.building}</td>
+            <td>${r.floor_number}</td>
+            <td>${r.num_beds}</td>
           `;
 
           tbody.appendChild(row);
@@ -240,15 +282,12 @@
         const floorVal = document.getElementById("filterFloor").value;
 
         const filtered = ALL_ROOMS.filter((r) => {
-          const wardName = r.name || \`Ward \${r.ward_id}\`;
-          const building = r.building || "";
-          const floor = r.floor_number;
-
-          const matchesWard = !wardVal || wardName === wardVal;
-          const matchesBuilding = !buildingVal || building === buildingVal;
+          const matchesWard = !wardVal || r.ward_name === wardVal;
+          const matchesBuilding = !buildingVal || r.building === buildingVal;
           const matchesFloor =
             !floorVal ||
-            (floor !== undefined && floor !== null && String(floor) === String(floorVal));
+            (r.floor_number !== "—" &&
+              String(r.floor_number) === String(floorVal));
 
           return matchesWard && matchesBuilding && matchesFloor;
         });
@@ -259,19 +298,20 @@
       window.addEventListener("load", () => {
         setTodayRooms();
         loadRooms();
-      });
 
-      document.getElementById("applyFiltersBtn").addEventListener("click", applyRoomFilters);
+        const btn = document.getElementById("applyFiltersBtn");
+        if (btn) btn.addEventListener("click", applyRoomFilters);
+      });
     </script>
 
-<script type="module">
+    <script type="module">
       import { loadUserProfile, logout } from "../shared/auth.js";
 
       loadUserProfile().then((data) => {
         document.getElementById("userName").textContent = data.fullName;
         document.getElementById("userRole").textContent = data.role;
         document.getElementById("userInitials").textContent =
-          data.fullName.split(" ").map(n => n[0]).join("");
+          data.fullName.split(" ").map((n) => n[0]).join("");
       });
 
       document.querySelector(".logout-link").addEventListener("click", (e) => {
@@ -279,6 +319,5 @@
         logout();
       });
     </script>
-
   </body>
 </html>

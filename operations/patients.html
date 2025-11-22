@@ -24,13 +24,11 @@
       </div>
 
       <div class="sidebar-user">
-        
         <div class="avatar-circle" id="userInitials">JS</div>
         <div class="user-meta">
           <span class="user-name" id="userName">Loading...</span>
           <span class="user-role" id="userRole">Role...</span>
         </div>
-
       </div>
     </div>
 
@@ -44,7 +42,7 @@
       <a href="manage-beds.html">Manage beds</a>
       <a href="manage-rooms.html">Manage rooms</a>
 
-      <a href="index.html" class="logout-link">Logout</a>
+      <a href="../index.html" class="logout-link">Logout</a>
     </nav>
   </aside>
 
@@ -66,8 +64,12 @@
     <section class="card patients-card">
       <!-- Search + filters -->
       <div class="patients-filters">
-        <input type="text" id="searchInput" class="input-text patients-search"
-               placeholder="Search by name or MRN" />
+        <input
+          type="text"
+          id="searchInput"
+          class="input-text patients-search"
+          placeholder="Search by name or MRN"
+        />
 
         <select id="statusFilter" class="input-select">
           <option value="all">All statuses</option>
@@ -106,7 +108,9 @@
               <th>Reason</th>
             </tr>
           </thead>
-          <tbody id="patientsTableBody"></tbody>
+          <tbody id="patientsTableBody">
+            <!-- rows injected via JS -->
+          </tbody>
         </table>
       </div>
     </section>
@@ -138,11 +142,15 @@
 
     function setTodayPatients() {
       const el = document.getElementById("todayValue");
+      if (!el) return;
       const now = new Date();
-      el.textContent = now.toLocaleString("en-US", { month: "short", day: "numeric" });
+      el.textContent = now.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
     }
 
-    // Apply UI class for status pills
+    // Status pill CSS mapping
     function statusClass(status) {
       if (!status) return "status-pill";
       const s = status.toLowerCase();
@@ -154,80 +162,99 @@
     }
 
     async function loadPatients() {
+      const tbody = document.getElementById("patientsTableBody");
       try {
         const res = await fetch(`${API_BASE}/patients`);
-        if (!res.ok) throw new Error("Failed to fetch patients");
-        ALL_PATIENTS = await res.json();
+        if (!res.ok) throw new Error(`Failed to fetch patients, status ${res.status}`);
+        const data = await res.json();
+        ALL_PATIENTS = Array.isArray(data) ? data : [];
         renderPatientsTable(ALL_PATIENTS);
       } catch (err) {
         console.error("Patient load error:", err);
-        const tbody = document.getElementById("patientsTableBody");
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Unable to load patients</td></tr>`;
+        if (tbody) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" class="empty-row">Unable to load patients</td></tr>';
+        }
       }
     }
 
-    // Render the table rows
     function renderPatientsTable(list) {
       const tbody = document.getElementById("patientsTableBody");
+      if (!tbody) return;
+
       tbody.innerHTML = "";
 
-      if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-row">No matching patients</td></tr>`;
+      if (!list || !list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="empty-row">No matching patients</td></tr>';
         return;
       }
 
       list.forEach((p) => {
+        const firstName = p.first_name || "";
+        const lastName = p.last_name || "";
+        const mrn = p.medical_record_number || "";
+        const status = p.admission_status || "";
+        const priority = p.priority_level ?? "";
+        const reason = p.admit_reason || "";
+
         const tr = document.createElement("tr");
         tr.classList.add("clickable-row");
         tr.onclick = () => openDrawer(p);
 
         tr.innerHTML = `
-          <td>${p.first_name} ${p.last_name}</td>
-          <td>${p.medical_record_number}</td>
-          <td><span class="${statusClass(p.admission_status)}">${p.admission_status}</span></td>
-          <td>${p.priority_level}</td>
-          <td>${p.admit_reason}</td>
+          <td>${firstName} ${lastName}</td>
+          <td>${mrn}</td>
+          <td><span class="${statusClass(status)}">${status}</span></td>
+          <td>${priority}</td>
+          <td>${reason}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // Drawer open
     function openDrawer(p) {
-      document.getElementById("d_name").textContent = `${p.first_name} ${p.last_name}`;
-      document.getElementById("d_mrn").textContent = p.medical_record_number;
-      document.getElementById("d_status").textContent = p.admission_status;
-      document.getElementById("d_priority").textContent = p.priority_level;
-      document.getElementById("d_reason").textContent = p.admit_reason;
-      document.getElementById("d_dob").textContent = p.date_of_birth;
-      document.getElementById("d_gender").textContent = p.gender;
-      document.getElementById("d_id").textContent = p.patient_id;
+      const firstName = p.first_name || "";
+      const lastName = p.last_name || "";
+      document.getElementById("d_name").textContent = `${firstName} ${lastName}`.trim();
+      document.getElementById("d_mrn").textContent = p.medical_record_number || "";
+      document.getElementById("d_status").textContent = p.admission_status || "";
+      document.getElementById("d_priority").textContent = p.priority_level ?? "";
+      document.getElementById("d_reason").textContent = p.admit_reason || "";
+      document.getElementById("d_dob").textContent = p.date_of_birth || "";
+      document.getElementById("d_gender").textContent = p.gender || "";
+      document.getElementById("d_id").textContent = p.patient_id ?? "";
 
       document.getElementById("drawer").classList.add("open");
     }
 
-    // Drawer close
     function closeDrawer() {
       document.getElementById("drawer").classList.remove("open");
     }
 
-    // Filtering logic
     function applyFilters() {
-      const search = document.getElementById("searchInput").value.toLowerCase();
-      const status = document.getElementById("statusFilter").value;
-      const reason = document.getElementById("reasonFilter").value;
+      const search = document.getElementById("searchInput").value.toLowerCase().trim();
+      const statusFilter = document.getElementById("statusFilter").value;
+      const reasonFilter = document.getElementById("reasonFilter").value;
 
       const filtered = ALL_PATIENTS.filter((p) => {
+        const first = (p.first_name || "").toLowerCase();
+        const last = (p.last_name || "").toLowerCase();
+        const mrn = (p.medical_record_number || "").toLowerCase();
+
         const matchesText =
-          p.first_name.toLowerCase().includes(search) ||
-          p.last_name.toLowerCase().includes(search) ||
-          (p.medical_record_number || "").toLowerCase().includes(search);
+          !search ||
+          first.includes(search) ||
+          last.includes(search) ||
+          mrn.includes(search);
+
+        const status = p.admission_status || "";
+        const reason = p.admit_reason || "";
 
         const matchesStatus =
-          status === "all" || p.admission_status === status;
-
+          statusFilter === "all" || status === statusFilter;
         const matchesReason =
-          reason === "all" || p.admit_reason === reason;
+          reasonFilter === "all" || reason === reasonFilter;
 
         return matchesText && matchesStatus && matchesReason;
       });
@@ -235,16 +262,20 @@
       renderPatientsTable(filtered);
     }
 
-    window.onload = () => {
+    window.addEventListener("load", () => {
       setTodayPatients();
       loadPatients();
-    };
 
-    document.getElementById("searchInput").addEventListener("keyup", (e) => {
-      if (e.key === "Enter") applyFilters();
+      const searchInput = document.getElementById("searchInput");
+      if (searchInput) {
+        searchInput.addEventListener("keyup", (e) => {
+          if (e.key === "Enter") applyFilters();
+        });
+      }
     });
   </script>
 
+  <!-- Firebase user display -->
   <script type="module">
     import { loadUserProfile, logout } from "../shared/auth.js";
 
@@ -252,7 +283,7 @@
       document.getElementById("userName").textContent = data.fullName;
       document.getElementById("userRole").textContent = data.role;
       document.getElementById("userInitials").textContent =
-        data.fullName.split(" ").map(n => n[0]).join("");
+        data.fullName.split(" ").map((n) => n[0]).join("");
     });
 
     document.querySelector(".logout-link").addEventListener("click", (e) => {
@@ -260,6 +291,5 @@
       logout();
     });
   </script>
-
 </body>
 </html>
