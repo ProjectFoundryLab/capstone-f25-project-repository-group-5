@@ -29,7 +29,7 @@
           <span class="user-name" id="userName">Loading...</span>
           <span class="user-role" id="userRole">Role...</span>
         </div>
-
+      </div>
     </div>
 
     <nav class="sidebar-nav">
@@ -42,7 +42,7 @@
       <a href="manage-beds.html" class="active">Manage beds</a>
       <a href="manage-rooms.html">Manage rooms</a>
 
-      <a href="index.html" class="logout-link">Logout</a>
+      <a href="../index.html" class="logout-link">Logout</a>
     </nav>
   </aside>
 
@@ -91,12 +91,13 @@
               <th>Ward</th>
               <th>Room</th>
               <th>Status</th>
-              <th>Actions</th>
+              <!-- Actions column removed -->
             </tr>
           </thead>
 
           <tbody id="bedsTbody">
-            <tr><td colspan="5" class="empty-row">Loading beds…</td></tr>
+            <!-- colspan changed from 5 -> 4 -->
+            <tr><td colspan="4" class="empty-row">Loading beds…</td></tr>
           </tbody>
         </table>
       </div>
@@ -108,107 +109,146 @@
     const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
     let ALL_BEDS = [];
 
+    // Show today's date in the pill
     function setToday() {
       const now = new Date();
-      document.getElementById("todayValue").textContent =
-        now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const el = document.getElementById("todayValue");
+      if (!el) return;
+      el.textContent = now.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
     }
 
     // Helper: derive room number from bed_number like "A101" -> "101"
     function getRoomNumberFromBed(bedNumber) {
       if (!bedNumber || typeof bedNumber !== "string") return "—";
-      // assume first character is building letter, rest is room
       if (bedNumber.length > 1) {
         return bedNumber.substring(1);
       }
       return bedNumber;
     }
 
+    // Load all beds from backend
     async function loadBeds() {
+      const tbody = document.getElementById("bedsTbody");
       try {
-        const res = await fetch(\`\${API_BASE}/beds\`);
-        ALL_BEDS = await res.json();
+        const res = await fetch(`${API_BASE}/beds`);
+        if (!res.ok) {
+          throw new Error(`Failed to load beds, status ${res.status}`);
+        }
+
+        const data = await res.json();
+        ALL_BEDS = Array.isArray(data) ? data : [];
 
         populateFilterOptions(ALL_BEDS);
         renderTable(ALL_BEDS);
       } catch (err) {
         console.error("Error loading beds:", err);
-        const tbody = document.getElementById("bedsTbody");
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Failed to load beds.</td></tr>';
+        if (tbody) {
+          // colspan changed from 5 -> 4
+          tbody.innerHTML =
+            '<tr><td colspan="4" class="empty-row">Failed to load beds.</td></tr>';
+        }
       }
     }
 
+    // Fill the "All wards" dropdown based on the beds we have
     function populateFilterOptions(beds) {
       const wardSelect = document.getElementById("filterWard");
+      if (!wardSelect) return;
 
-      // Extract unique ward names (fallback to "Ward X" if name missing)
-      const wards = [...new Set(
-        beds.map(b => b.ward_name || \`Ward \${b.ward_id}\`)
-      )];
+      // reset options (keep the default "All wards")
+      wardSelect.innerHTML = '<option value="">All wards</option>';
 
-      wards.forEach(w => {
-        const opt = document.createElement("option");
-        opt.value = w;
-        opt.textContent = w;
-        wardSelect.appendChild(opt);
+      const wardLabels = new Set();
+
+      beds.forEach((b) => {
+        // label as "Ward X" using ward_id
+        const label = `Ward ${b.ward_id}`;
+        wardLabels.add(label);
       });
+
+      Array.from(wardLabels)
+        .sort()
+        .forEach((label) => {
+          const opt = document.createElement("option");
+          opt.value = label;      // value matches label for comparison
+          opt.textContent = label;
+          wardSelect.appendChild(opt);
+        });
     }
 
+    // Render rows into the table
     function renderTable(beds) {
       const tbody = document.getElementById("bedsTbody");
+      if (!tbody) return;
+
       tbody.innerHTML = "";
 
-      if (!beds.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No beds found</td></tr>';
+      if (!beds || beds.length === 0) {
+        // colspan changed from 5 -> 4
+        tbody.innerHTML =
+          '<tr><td colspan="4" class="empty-row">No beds found</td></tr>';
         return;
       }
 
-      beds.forEach(b => {
+      beds.forEach((b) => {
         const row = document.createElement("tr");
 
-        const wardName = b.ward_name || \`Ward \${b.ward_id}\`;
+        const wardLabel = `Ward ${b.ward_id}`;
         const roomNumber = b.room_number || getRoomNumberFromBed(b.bed_number);
 
-        row.innerHTML = \`
-          <td>Bed \${b.bed_number}</td>
-          <td>\${wardName}</td>
-          <td>Room \${roomNumber}</td>
+        const rawStatus = b.bed_status || "";
+        const statusLower = rawStatus.toLowerCase();
+
+        row.innerHTML = `
+          <td>Bed ${b.bed_number}</td>
+          <td>${wardLabel}</td>
+          <td>Room ${roomNumber}</td>
           <td>
-            <span class="status-pill status-\${b.bed_status}">\${b.bed_status}</span>
+            <span class="status-pill status-${statusLower}">${rawStatus}</span>
           </td>
-          <td class="actions-cell">
-            <button class="table-btn green">Mark cleaning</button>
-            <button class="table-btn navy">Discharge</button>
-          </td>
-        \`;
+        `; <!-- actions cell removed -->
 
         tbody.appendChild(row);
       });
     }
 
+    // Apply ward + status filters when "Apply filters" is clicked
     function applyFilters() {
-      const ward = document.getElementById("filterWard").value;
-      const status = document.getElementById("filterStatus").value;
+      const wardVal = document.getElementById("filterWard").value;     // e.g. "Ward 1" or ""
+      const statusVal = document.getElementById("filterStatus").value; // e.g. "available" or ""
 
-      const filtered = ALL_BEDS.filter(b => {
-        const wardName = b.ward_name || \`Ward \${b.ward_id}\`;
-        const matchesWard = ward === "" || wardName === ward;
-        const matchesStatus = status === "" || b.bed_status === status;
+      const filtered = ALL_BEDS.filter((b) => {
+        const wardLabel = `Ward ${b.ward_id}`;
+        const statusLower = (b.bed_status || "").toLowerCase();
+
+        const matchesWard =
+          wardVal === "" || wardLabel === wardVal;
+
+        const matchesStatus =
+          statusVal === "" || statusLower === statusVal.toLowerCase();
+
         return matchesWard && matchesStatus;
       });
 
       renderTable(filtered);
     }
 
-    // Event listeners
-    document.getElementById("applyFiltersBtn").onclick = applyFilters;
-
-    window.onload = () => {
+    // Initial page setup
+    window.addEventListener("load", () => {
       setToday();
       loadBeds();
-    };
+
+      const applyBtn = document.getElementById("applyFiltersBtn");
+      if (applyBtn) {
+        applyBtn.addEventListener("click", applyFilters);
+      }
+    });
   </script>
 
+  <!-- FIREBASE / AUTH USER DISPLAY -->
   <script type="module">
     import { loadUserProfile, logout } from "../shared/auth.js";
 
@@ -216,7 +256,7 @@
       document.getElementById("userName").textContent = data.fullName;
       document.getElementById("userRole").textContent = data.role;
       document.getElementById("userInitials").textContent =
-        data.fullName.split(" ").map(n => n[0]).join("");
+        data.fullName.split(" ").map((n) => n[0]).join("");
     });
 
     document.querySelector(".logout-link").addEventListener("click", (e) => {
@@ -224,6 +264,5 @@
       logout();
     });
   </script>
-
 </body>
 </html>

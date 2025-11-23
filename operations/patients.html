@@ -24,13 +24,11 @@
       </div>
 
       <div class="sidebar-user">
-        
         <div class="avatar-circle" id="userInitials">JS</div>
         <div class="user-meta">
           <span class="user-name" id="userName">Loading...</span>
           <span class="user-role" id="userRole">Role...</span>
         </div>
-
       </div>
     </div>
 
@@ -44,7 +42,7 @@
       <a href="manage-beds.html">Manage beds</a>
       <a href="manage-rooms.html">Manage rooms</a>
 
-      <a href="index.html" class="logout-link">Logout</a>
+      <a href="../index.html" class="logout-link">Logout</a>
     </nav>
   </aside>
 
@@ -60,14 +58,20 @@
 
     <section class="page-header">
       <h2>Patients</h2>
-      <p class="page-subtitle">Search and explore all patients in the hospital system.</p>
+      <p class="page-subtitle">
+        Search, filter, and manage patient admissions across the hospital.
+      </p>
     </section>
 
     <section class="card patients-card">
       <!-- Search + filters -->
       <div class="patients-filters">
-        <input type="text" id="searchInput" class="input-text patients-search"
-               placeholder="Search by name or MRN" />
+        <input
+          type="text"
+          id="searchInput"
+          class="input-text patients-search"
+          placeholder="Search by name or MRN"
+        />
 
         <select id="statusFilter" class="input-select">
           <option value="all">All statuses</option>
@@ -94,6 +98,14 @@
         <button class="primary-btn" type="button" onclick="applyFilters()">Filter</button>
       </div>
 
+      <p class="patients-hint">
+        Tip: Click a patient row to view details, admit them to a bed, or discharge them from their current bed.
+      </p>
+
+      <p id="patientsError" class="patients-error" style="display:none;">
+        Unable to load patients. Please check the backend /patients API.
+      </p>
+
       <!-- Table -->
       <div class="table-wrapper">
         <table class="data-table patients-table">
@@ -106,7 +118,9 @@
               <th>Reason</th>
             </tr>
           </thead>
-          <tbody id="patientsTableBody"></tbody>
+          <tbody id="patientsTableBody">
+            <!-- rows injected via JS -->
+          </tbody>
         </table>
       </div>
     </section>
@@ -115,7 +129,7 @@
   <!-- ======================= DETAILS DRAWER ======================= -->
   <aside id="drawer" class="drawer">
     <div class="drawer-header">
-      <h3>Patient Details</h3>
+      <h3>Patient details</h3>
       <button class="drawer-close" onclick="closeDrawer()">×</button>
     </div>
 
@@ -123,11 +137,39 @@
       <p><strong>Name:</strong> <span id="d_name"></span></p>
       <p><strong>MRN:</strong> <span id="d_mrn"></span></p>
       <p><strong>Status:</strong> <span id="d_status"></span></p>
-      <p><strong>Priority Level:</strong> <span id="d_priority"></span></p>
+      <p><strong>Priority level:</strong> <span id="d_priority"></span></p>
       <p><strong>Reason:</strong> <span id="d_reason"></span></p>
-      <p><strong>Date of Birth:</strong> <span id="d_dob"></span></p>
+      <p><strong>Date of birth:</strong> <span id="d_dob"></span></p>
       <p><strong>Gender:</strong> <span id="d_gender"></span></p>
       <p><strong>Patient ID:</strong> <span id="d_id"></span></p>
+      <p><strong>Current bed:</strong> <span id="d_bed"></span></p>
+
+      <hr class="drawer-divider" />
+
+      <div class="drawer-actions">
+        <h4>Manage admission</h4>
+        <p class="drawer-hint">
+          Admit this patient to an available bed or discharge them from their current bed. Changes will appear on the dashboard immediately.
+        </p>
+
+        <label class="drawer-label" for="bedAssignSelect">Select bed</label>
+        <select id="bedAssignSelect" class="input-select drawer-bed-select">
+          <option value="">Loading beds…</option>
+        </select>
+
+        <div class="drawer-buttons">
+          <button class="small-btn" type="button" onclick="admitToSelectedBed()">
+            Admit to bed
+          </button>
+          <button class="small-btn" type="button" onclick="dischargeFromCurrentBed()">
+            Discharge from current bed
+          </button>
+        </div>
+
+        <p class="drawer-note">
+          Note: Only beds with status “Available” appear in the dropdown.
+        </p>
+      </div>
     </div>
   </aside>
 
@@ -135,14 +177,22 @@
   <script>
     const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
     let ALL_PATIENTS = [];
+    let ALL_BEDS = [];
+    let CURRENT_PATIENT = null;
 
     function setTodayPatients() {
       const el = document.getElementById("todayValue");
+      if (!el) return;
       const now = new Date();
-      el.textContent = now.toLocaleString("en-US", { month: "short", day: "numeric" });
+      el.textContent = now.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
     }
 
-    // Apply UI class for status pills
+    // ------------------------------
+    // Status pill CSS mapping
+    // ------------------------------
     function statusClass(status) {
       if (!status) return "status-pill";
       const s = status.toLowerCase();
@@ -153,81 +203,168 @@
       return "status-pill";
     }
 
+    // ------------------------------
+    // Load patients
+    // ------------------------------
     async function loadPatients() {
+      const tbody = document.getElementById("patientsTableBody");
+      const errorEl = document.getElementById("patientsError");
+
+      if (errorEl) errorEl.style.display = "none";
+
       try {
         const res = await fetch(`${API_BASE}/patients`);
-        if (!res.ok) throw new Error("Failed to fetch patients");
-        ALL_PATIENTS = await res.json();
+        if (!res.ok) throw new Error(`Failed to fetch patients, status ${res.status}`);
+        const data = await res.json();
+        ALL_PATIENTS = Array.isArray(data) ? data : [];
         renderPatientsTable(ALL_PATIENTS);
       } catch (err) {
         console.error("Patient load error:", err);
-        const tbody = document.getElementById("patientsTableBody");
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Unable to load patients</td></tr>`;
+        if (tbody) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" class="empty-row">Unable to load patients</td></tr>';
+        }
+        if (errorEl) errorEl.style.display = "block";
       }
     }
 
-    // Render the table rows
     function renderPatientsTable(list) {
       const tbody = document.getElementById("patientsTableBody");
+      if (!tbody) return;
+
       tbody.innerHTML = "";
 
-      if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-row">No matching patients</td></tr>`;
+      if (!list || !list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="empty-row">No matching patients</td></tr>';
         return;
       }
 
       list.forEach((p) => {
+        const firstName = p.first_name || "";
+        const lastName = p.last_name || "";
+        const mrn = p.medical_record_number || "";
+        const status = p.admission_status || "";
+        const priority = p.priority_level ?? "";
+        const reason = p.admit_reason || "";
+
         const tr = document.createElement("tr");
         tr.classList.add("clickable-row");
         tr.onclick = () => openDrawer(p);
 
         tr.innerHTML = `
-          <td>${p.first_name} ${p.last_name}</td>
-          <td>${p.medical_record_number}</td>
-          <td><span class="${statusClass(p.admission_status)}">${p.admission_status}</span></td>
-          <td>${p.priority_level}</td>
-          <td>${p.admit_reason}</td>
+          <td>${firstName} ${lastName}</td>
+          <td>${mrn}</td>
+          <td><span class="${statusClass(status)}">${status}</span></td>
+          <td>${priority}</td>
+          <td>${reason}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // Drawer open
+    // ------------------------------
+    // Load beds (for admission/discharge)
+    // ------------------------------
+    async function loadBedsForPatientsPage() {
+      try {
+        const res = await fetch(`${API_BASE}/beds`);
+        if (!res.ok) throw new Error(`Failed to fetch beds, status ${res.status}`);
+        const data = await res.json();
+        ALL_BEDS = Array.isArray(data) ? data : [];
+        populateBedSelect();
+      } catch (err) {
+        console.error("Beds load error:", err);
+        // keep the drawer dropdown as "Loading beds…" / no beds available
+      }
+    }
+
+    function populateBedSelect() {
+      const select = document.getElementById("bedAssignSelect");
+      if (!select) return;
+
+      select.innerHTML = "";
+
+      if (!ALL_BEDS.length) {
+        select.innerHTML = '<option value="">No beds available</option>';
+        return;
+      }
+
+      const availableBeds = ALL_BEDS.filter(
+        (b) => (b.bed_status || "").toLowerCase() === "available"
+      );
+
+      if (!availableBeds.length) {
+        select.innerHTML = '<option value="">No available beds</option>';
+        return;
+      }
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select a bed…";
+      select.appendChild(placeholder);
+
+      availableBeds.forEach((b) => {
+        const opt = document.createElement("option");
+        opt.value = b.bed_number;
+        opt.textContent = `Bed ${b.bed_number}`;
+        select.appendChild(opt);
+      });
+    }
+
+    // ------------------------------
+    // Drawer open/close
+    // ------------------------------
     function openDrawer(p) {
-      document.getElementById("d_name").textContent = `${p.first_name} ${p.last_name}`;
-      document.getElementById("d_mrn").textContent = p.medical_record_number;
-      document.getElementById("d_status").textContent = p.admission_status;
-      document.getElementById("d_priority").textContent = p.priority_level;
-      document.getElementById("d_reason").textContent = p.admit_reason;
-      document.getElementById("d_dob").textContent = p.date_of_birth;
-      document.getElementById("d_gender").textContent = p.gender;
-      document.getElementById("d_id").textContent = p.patient_id;
+      CURRENT_PATIENT = p;
+
+      const firstName = p.first_name || "";
+      const lastName = p.last_name || "";
+      document.getElementById("d_name").textContent = `${firstName} ${lastName}`.trim();
+      document.getElementById("d_mrn").textContent = p.medical_record_number || "";
+      document.getElementById("d_status").textContent = p.admission_status || "";
+      document.getElementById("d_priority").textContent = p.priority_level ?? "";
+      document.getElementById("d_reason").textContent = p.admit_reason || "";
+      document.getElementById("d_dob").textContent = p.date_of_birth || "";
+      document.getElementById("d_gender").textContent = p.gender || "";
+      document.getElementById("d_id").textContent = p.patient_id ?? "";
+
+      const pid = p.patient_id;
+      const currentBed = ALL_BEDS.find((b) => b.patient_id === pid);
+      const bedLabel = currentBed
+        ? `Bed ${currentBed.bed_number}`
+        : "Not currently assigned to a bed";
+      document.getElementById("d_bed").textContent = bedLabel;
 
       document.getElementById("drawer").classList.add("open");
     }
 
-    // Drawer close
     function closeDrawer() {
       document.getElementById("drawer").classList.remove("open");
+      CURRENT_PATIENT = null;
     }
 
-    // Filtering logic
+    // ------------------------------
+    // Filters
+    // ------------------------------
     function applyFilters() {
-      const search = document.getElementById("searchInput").value.toLowerCase();
-      const status = document.getElementById("statusFilter").value;
-      const reason = document.getElementById("reasonFilter").value;
+      const search = document.getElementById("searchInput").value.toLowerCase().trim();
+      const statusFilter = document.getElementById("statusFilter").value;
+      const reasonFilter = document.getElementById("reasonFilter").value;
 
       const filtered = ALL_PATIENTS.filter((p) => {
+        const first = (p.first_name || "").toLowerCase();
+        const last = (p.last_name || "").toLowerCase();
+        const mrn = (p.medical_record_number || "").toLowerCase();
+
         const matchesText =
-          p.first_name.toLowerCase().includes(search) ||
-          p.last_name.toLowerCase().includes(search) ||
-          (p.medical_record_number || "").toLowerCase().includes(search);
+          !search || first.includes(search) || last.includes(search) || mrn.includes(search);
 
-        const matchesStatus =
-          status === "all" || p.admission_status === status;
+        const status = p.admission_status || "";
+        const reason = p.admit_reason || "";
 
-        const matchesReason =
-          reason === "all" || p.admit_reason === reason;
+        const matchesStatus = statusFilter === "all" || status === statusFilter;
+        const matchesReason = reasonFilter === "all" || reason === reasonFilter;
 
         return matchesText && matchesStatus && matchesReason;
       });
@@ -235,16 +372,125 @@
       renderPatientsTable(filtered);
     }
 
-    window.onload = () => {
+    // ------------------------------
+    // Admit patient to selected bed
+    // ------------------------------
+    async function admitToSelectedBed() {
+      if (!CURRENT_PATIENT || !CURRENT_PATIENT.patient_id) {
+        alert("No patient selected.");
+        return;
+      }
+
+      const select = document.getElementById("bedAssignSelect");
+      const bedNumber = select.value;
+
+      if (!bedNumber) {
+        alert("Please select a bed to admit this patient.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/beds/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bed_number: bedNumber,
+            bed_status: "occupied",
+            patient_id: CURRENT_PATIENT.patient_id,
+          }),
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          alert(text || "Error admitting patient to bed.");
+          return;
+        }
+
+        alert("Patient admitted and bed updated successfully.");
+
+        // Refresh beds and update drawer info
+        await loadBedsForPatientsPage();
+
+        const currentBed = ALL_BEDS.find(
+          (b) => b.patient_id === CURRENT_PATIENT.patient_id
+        );
+        document.getElementById("d_bed").textContent = currentBed
+          ? `Bed ${currentBed.bed_number}`
+          : "Not currently assigned to a bed";
+
+        document.getElementById("d_status").textContent = "Admitted";
+      } catch (err) {
+        console.error("Error admitting patient:", err);
+        alert("Failed to admit patient.");
+      }
+    }
+
+    // ------------------------------
+    // Discharge patient from current bed
+    // ------------------------------
+    async function dischargeFromCurrentBed() {
+      if (!CURRENT_PATIENT || !CURRENT_PATIENT.patient_id) {
+        alert("No patient selected.");
+        return;
+      }
+
+      const pid = CURRENT_PATIENT.patient_id;
+      const currentBed = ALL_BEDS.find((b) => b.patient_id === pid);
+
+      if (!currentBed) {
+        alert("This patient is not currently assigned to a bed.");
+        return;
+      }
+
+      const bedNumber = currentBed.bed_number;
+
+      try {
+        const res = await fetch(`${API_BASE}/beds/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bed_number: bedNumber,
+            bed_status: "available",
+            patient_id: null,
+          }),
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          alert(text || "Error discharging patient.");
+          return;
+        }
+
+        alert("Patient discharged and bed freed successfully.");
+
+        await loadBedsForPatientsPage();
+
+        document.getElementById("d_bed").textContent = "Not currently assigned to a bed";
+        document.getElementById("d_status").textContent = "Discharged";
+      } catch (err) {
+        console.error("Error discharging patient:", err);
+        alert("Failed to discharge patient.");
+      }
+    }
+
+    // ------------------------------
+    // Init
+    // ------------------------------
+    window.addEventListener("load", () => {
       setTodayPatients();
       loadPatients();
-    };
+      loadBedsForPatientsPage();
 
-    document.getElementById("searchInput").addEventListener("keyup", (e) => {
-      if (e.key === "Enter") applyFilters();
+      const searchInput = document.getElementById("searchInput");
+      if (searchInput) {
+        searchInput.addEventListener("keyup", (e) => {
+          if (e.key === "Enter") applyFilters();
+        });
+      }
     });
   </script>
 
+  <!-- Firebase user display -->
   <script type="module">
     import { loadUserProfile, logout } from "../shared/auth.js";
 
@@ -252,7 +498,7 @@
       document.getElementById("userName").textContent = data.fullName;
       document.getElementById("userRole").textContent = data.role;
       document.getElementById("userInitials").textContent =
-        data.fullName.split(" ").map(n => n[0]).join("");
+        data.fullName.split(" ").map((n) => n[0]).join("");
     });
 
     document.querySelector(".logout-link").addEventListener("click", (e) => {
@@ -260,6 +506,5 @@
       logout();
     });
   </script>
-
 </body>
 </html>

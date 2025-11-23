@@ -19,19 +19,15 @@
       <div class="sidebar-header">
         <div class="sidebar-brand">
           <img src="../images/Med.jpg" alt="Medbed Systems logo" class="brand-logo" />
-          <div class="logo-text">
-            <span>Medbed Systems</span>
-          </div>
+          <div class="logo-text"><span>Medbed Systems</span></div>
         </div>
 
         <div class="sidebar-user">
-          
           <div class="avatar-circle" id="userInitials">JS</div>
           <div class="user-meta">
             <span class="user-name" id="userName">Loading...</span>
             <span class="user-role" id="userRole">Role...</span>
           </div>
-
         </div>
       </div>
 
@@ -45,7 +41,7 @@
         <a href="../operations/manage-beds.html">Manage beds</a>
         <a href="../operations/manage-rooms.html">Manage rooms</a>
 
-        <a href="index.html" class="logout-link">Logout</a>
+        <a href="../index.html" class="logout-link">Logout</a>
       </nav>
     </aside>
 
@@ -66,59 +62,60 @@
         </p>
       </section>
 
-      <!-- TOP: SUMMARY INSIGHT CARDS -->
+      <!-- TOP: SUMMARY CARDS -->
       <section class="insights-summary-row">
-        <!-- 1. Current occupancy -->
         <div class="card insight-card">
           <h3>Current occupancy</h3>
           <p class="big-number">
             <span id="occupancyPercent">—</span><span class="big-number-unit">%</span>
           </p>
-          <p class="muted" id="occupancyDetail">
-            Based on all beds in the hospital.
-          </p>
+          <p class="muted" id="occupancyDetail"></p>
         </div>
 
-        <!-- 2. Busiest ward -->
         <div class="card insight-card">
           <h3>Busiest ward right now</h3>
-          <p class="big-number">
-            <span id="busiestWard">—</span>
-          </p>
-          <p class="muted" id="busiestWardDetail">
-            Ward with the most beds currently in use.
-          </p>
+          <p class="big-number"><span id="busiestWard">—</span></p>
+          <p class="muted" id="busiestWardDetail"></p>
         </div>
 
-        <!-- 3. COVID-19 case share -->
         <div class="card insight-card">
           <h3>COVID-19 case share</h3>
           <p class="big-number">
             <span id="covidPercent">—</span><span class="big-number-unit">%</span>
           </p>
-          <p class="muted" id="covidDetail">
-            Patients admitted with COVID-19.
-          </p>
+          <p class="muted" id="covidDetail"></p>
         </div>
       </section>
 
-      <!-- BOTTOM: CHART PLACEHOLDERS FOR GRAFANA -->
+      <!-- CHARTS: STACKED VERTICALLY -->
       <section class="insights-chart-row">
+        <!-- Chart 1: Medical Condition -->
         <div class="card chart-card">
-          <h3>Forecasted daily admissions</h3>
-          <p class="muted">Grafana line chart will be embedded here.</p>
           <div class="chart-placeholder">
-            Line chart placeholder — hook up Grafana here using mock data from GCP.
+            <iframe
+              src="https://lookerstudio.google.com/embed/reporting/6e261ff2-c6fa-45c8-8a08-9237021c09ca/page/p_4bfcvmgdyd"
+              width="100%"
+              height="100%"
+              frameborder="0"
+              style="border:0;"
+              allowfullscreen
+              sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
+            </iframe>
           </div>
         </div>
 
+        <!-- Chart 2: Trendline Forecast -->
         <div class="card chart-card">
-          <h3>Ward load (next 14 days)</h3>
-          <p class="muted">
-            Predicted occupancy by ICU North, General East, Isolation South.
-          </p>
           <div class="chart-placeholder">
-            Bar / stacked chart placeholder — planned Grafana visualization.
+            <iframe
+              src="https://lookerstudio.google.com/embed/reporting/6e261ff2-c6fa-45c8-8a08-9237021c09ca/page/p_00xkukhdyd"
+              width="100%"
+              height="100%"
+              frameborder="0"
+              style="border:0;"
+              allowfullscreen
+              sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
+            </iframe>
           </div>
         </div>
       </section>
@@ -128,7 +125,6 @@
     <script>
       const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
 
-      // Same ward labels as dashboard
       const WARD_LABELS = {
         1: "ICU North",
         2: "General East",
@@ -137,8 +133,7 @@
 
       function setTodayInsights() {
         const el = document.getElementById("todayValue");
-        const now = new Date();
-        el.textContent = now.toLocaleString("en-US", {
+        el.textContent = new Date().toLocaleString("en-US", {
           month: "short",
           day: "numeric",
         });
@@ -146,84 +141,86 @@
 
       async function loadInsights() {
         try {
-          const [bedsRes, patientsRes] = await Promise.all([
+          const [bedsRes, admissionsRes] = await Promise.all([
             fetch(`${API_BASE}/beds`),
-            fetch(`${API_BASE}/patients`),
+            fetch(`${API_BASE}/admissions/latest`)
           ]);
 
           const beds = bedsRes.ok ? await bedsRes.json() : [];
-          const patients = patientsRes.ok ? await patientsRes.json() : [];
+          const admissions = admissionsRes.ok ? await admissionsRes.json() : [];
 
           updateOccupancyCard(beds);
           updateBusiestWardCard(beds);
-          updateCovidCard(patients);
+          updateCovidCard(admissions);
         } catch (err) {
-          console.error("Error loading insights data:", err);
+          console.error("Error loading insights:", err);
         }
       }
 
       function updateOccupancyCard(beds) {
         const totalBeds = beds.length;
-        const inUse = beds.filter((b) =>
+        const inUse = beds.filter(b =>
           ["occupied", "reserved", "cleaning", "transferring"].includes(
             (b.bed_status || "").toLowerCase()
           )
         ).length;
+        const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
 
-        const percent = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
-
-        document.getElementById("occupancyPercent").textContent = percent;
+        document.getElementById("occupancyPercent").textContent = pct;
         document.getElementById("occupancyDetail").textContent =
-          `${inUse} of ${totalBeds || 0} beds currently in use.`;
+          `${inUse} of ${totalBeds} beds currently in use.`;
       }
 
       function updateBusiestWardCard(beds) {
-        const wardCounts = {};
-
-        beds.forEach((b) => {
+        const counts = {};
+        beds.forEach(b => {
           const status = (b.bed_status || "").toLowerCase();
-          const inUse = ["occupied", "reserved", "cleaning", "transferring"].includes(status);
-          if (!inUse) return;
-
-          const wid = b.ward_id;
-          if (!wardCounts[wid]) wardCounts[wid] = 0;
-          wardCounts[wid] += 1;
-        });
-
-        let bestWardId = null;
-        let bestCount = 0;
-
-        Object.keys(wardCounts).forEach((wid) => {
-          if (wardCounts[wid] > bestCount) {
-            bestCount = wardCounts[wid];
-            bestWardId = wid;
+          if (["occupied", "reserved", "cleaning", "transferring"].includes(status)) {
+            counts[b.ward_id] = (counts[b.ward_id] || 0) + 1;
           }
         });
 
-        const name =
-          bestWardId !== null
-            ? (WARD_LABELS[bestWardId] || `Ward ${bestWardId}`)
-            : "No ward data";
+        let ward = null, max = 0;
+        Object.entries(counts).forEach(([id, count]) => {
+          if (count > max) {
+            max = count;
+            ward = id;
+          }
+        });
 
-        document.getElementById("busiestWard").textContent = name;
+        document.getElementById("busiestWard").textContent =
+          ward ? WARD_LABELS[ward] : "No data";
         document.getElementById("busiestWardDetail").textContent =
-          bestWardId !== null
-            ? `${bestCount} beds in use in this ward.`
-            : "No beds are currently in use.";
+          ward ? `${max} beds in use in this ward.` : "";
       }
 
-      function updateCovidCard(patients) {
-        const total = patients.length;
+      // COVID-19 card using /admissions/latest
+      function updateCovidCard(admissions) {
+        const percentEl = document.getElementById("covidPercent");
+        const detailEl = document.getElementById("covidDetail");
 
-        const covidCount = patients.filter((p) =>
-          (p.admit_reason || "").toLowerCase() === "covid-19"
+        if (!Array.isArray(admissions) || admissions.length === 0) {
+          percentEl.textContent = "—";
+          detailEl.textContent = "No recent admissions available.";
+          return;
+        }
+
+        const total = admissions.length;
+
+        const covid = admissions.filter(a =>
+          (a.admission_reason || "").toLowerCase() === "covid-19"
         ).length;
 
-        const percent = total ? Math.round((covidCount / total) * 100) : 0;
+        const pct = total ? Math.round((covid / total) * 100) : 0;
+        percentEl.textContent = pct;
 
-        document.getElementById("covidPercent").textContent = percent;
-        document.getElementById("covidDetail").textContent =
-          `${covidCount} of ${total || 0} patients are admitted with COVID-19.`;
+        if (covid === 0) {
+          detailEl.textContent =
+            `0 of the last ${total} admissions were due to COVID-19. Recent trend shows no COVID-related admissions.`;
+        } else {
+          detailEl.textContent =
+            `${covid} of the last ${total} admissions were due to COVID-19. Based on the most recent admissions feed.`;
+        }
       }
 
       window.addEventListener("load", () => {
@@ -232,14 +229,14 @@
       });
     </script>
 
+    <!-- FIREBASE / AUTH USER DISPLAY -->
     <script type="module">
       import { loadUserProfile, logout } from "../shared/auth.js";
-
-      loadUserProfile().then((data) => {
+      loadUserProfile().then(data => {
         document.getElementById("userName").textContent = data.fullName;
         document.getElementById("userRole").textContent = data.role;
         document.getElementById("userInitials").textContent =
-          data.fullName.split(" ").map(n => n[0]).join("");
+          data.fullName.split(" ").map(x => x[0]).join("");
       });
 
       document.querySelector(".logout-link").addEventListener("click", (e) => {
@@ -247,7 +244,5 @@
         logout();
       });
     </script>
-
-
   </body>
 </html>

@@ -7,24 +7,6 @@
   margin-bottom: 18px;
 }
 
-/* Table buttons */
-.table-btn {
-  padding: 6px 14px;
-  font-size: 12px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  color: #fff;
-}
-
-.table-btn.green {
-  background: #65d68d;
-}
-
-.table-btn.navy {
-  background: #0b0052;
-}
-
 /* Status pills */
 .status-pill {
   padding: 4px 12px;
@@ -48,9 +30,4 @@
 .status-reserved {
   background: #ffe6f8;
   color: #c600a4;
-}
-
-.actions-cell {
-  display: flex;
-  gap: 10px;
 }

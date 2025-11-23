@@ -1,15 +1,24 @@
-/* Top row: Occupancy + admissions */
+/* ===========================================================
+   TOP ROW: Occupancy + Admissions Chart
+   =========================================================== */
+
 .top-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   margin-top: 24px;
   align-items: stretch;
 }
 
-/* Middle section: wards */
+/* Main top row: make occupancy skinnier, chart wider */
+.top-row-main {
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+}
+
+/* Sections spacing */
 .page-section {
   margin-top: 32px;
+  margin-bottom: 40px;
 }
 
 .section-header {
@@ -18,11 +27,38 @@
   gap: 4px;
 }
 
-/* Occupancy card styling */
+/* ===========================================================
+   OCCUPANCY CARD
+   =========================================================== */
+
 .occupancy-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff, #f7fbff);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.05);
+  max-width: 420px;          /* keeps it from getting huge */
+}
+
+.occupancy-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+.occupancy-card .big-number {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.occupancy-card .muted {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 .card-divider {
@@ -32,54 +68,71 @@
 }
 
 .status-header {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   margin-bottom: 4px;
 }
 
-/* Status list inline like the mockup */
-.status-list.inline-status {
+/* ===========================================================
+   BED STATUS LIST (VERTICAL)
+   =========================================================== */
+
+.status-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 13px;
 }
 
-.status-list.inline-status li {
+.status-list.vertical-status {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-list.vertical-status li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #f5f5f5;
+  border-radius: 12px;
 }
 
 .status-label {
   font-size: 12px;
+  font-weight: 600;
 }
 
-/* Optional colors similar to the original UI */
-.status-available { color: #00a000; }   /* green */
-.status-occupied { color: #222; }
-.status-reserved { color: #d000ff; }    /* magenta-ish */
-.status-cleaning { color: #0080ff; }    /* blue */
-.status-transferring { color: #ff7a00; } /* orange */
+/* Label colors */
+.status-available    { color: #16a34a; }
+.status-occupied     { color: #111827; }
+.status-reserved     { color: #a855f7; }
+.status-cleaning     { color: #0284c7; }
+.status-transferring { color: #f97316; }
 
-/* Grafana placeholder card */
-.placeholder-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* ===========================================================
+   ADMISSIONS CHART CARD
+   =========================================================== */
+
+.chart-card {
+  padding: 0;
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+  background: #ffffff;
+  overflow: hidden;
 }
 
-.placeholder-area {
-  margin-top: 4px;
-  height: 140px;
-  border-radius: 12px;
-  border: 1px dashed #d5d5d5;
-  background: #fafafa;
+/* Slightly shorter height to reduce empty space */
+.chart-frame {
+  height: 380px;
+  border-radius: 24px;
+  overflow: hidden;
 }
 
-/* Wards row: three equal cards */
+/* ===========================================================
+   WARDS OVERVIEW
+   =========================================================== */
+
 .wards-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -93,23 +146,111 @@
 
 .ward-card {
   font-size: 14px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+  background: radial-gradient(circle at top left, #f4f6ff 0, #ffffff 55%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ward-card h4 {
-  margin-bottom: 6px;
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
 }
+
+/* Make the numbers pop a bit more */
+.ward-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.ward-card p span[id^="ward-"] {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* ===========================================================
+   UPDATE BED STATUS CARD
+   =========================================================== */
+
+/* Only applies if you add class="card update-card" */
+.update-card {
+  margin-top: 8px;
+  padding: 18px 22px;
+  border-radius: 22px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.update-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.update-card .muted {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Arrange selects + button nicely in a row */
+.update-card .filters-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1.6fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ===========================================================
+   BOTTOM DETAILS CARDS
+   =========================================================== */
+
+/* Only applies if you add class="top-row details-row" */
+.details-row {
+  margin-top: 20px;
+}
+
+.details-row .card {
+  border-radius: 20px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+/* Pretty containers for the info blocks */
+#bedInfoBox,
+#patientInfo {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+/* ===========================================================
+   RESPONSIVE
+   =========================================================== */
 
 @media (max-width: 900px) {
-  .top-row {
+  .top-row,
+  .top-row-main,
+  .details-row {
     grid-template-columns: 1fr;
   }
 
-  .wards-row {
+  .chart-frame {
+    height: 320px;
+  }
+
+  /* Stack update filters on small screens */
+  .update-card .filters-row {
     grid-template-columns: 1fr;
   }
-}
-
-/* This fixes spacing */
-.page-section {
-  margin-bottom: 40px;
 }

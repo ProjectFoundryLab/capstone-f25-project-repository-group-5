@@ -3,7 +3,7 @@
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 /* Filter controls */
@@ -12,11 +12,24 @@
   grid-template-columns: 2fr 1fr 1fr auto;
   gap: 12px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .patients-search {
   width: 100%;
+}
+
+/* Hint + error text under filters */
+.patients-hint {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.patients-error {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #b91c1c;
 }
 
 /* Clickable table rows */
@@ -66,6 +79,56 @@
   font-size: 14px;
 }
 
+/* Divider inside drawer */
+.drawer-divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 14px 0 12px;
+}
+
+/* Admission controls inside drawer */
+.drawer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drawer-actions h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.drawer-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.drawer-label {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.drawer-bed-select {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.drawer-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.drawer-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Responsive */
 @media (max-width: 900px) {
   .patients-filters {
     grid-template-columns: 1fr;
