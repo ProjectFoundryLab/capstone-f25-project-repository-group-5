@@ -1,3 +1,8 @@
+/* ===========================================================
+   Dropdown menu color coded
+   =========================================================== */
+
+
 .bed-option-available { color: #1a7f37; font-weight: 600; }
 .bed-option-occupied { color: #d12c2c; font-weight: 600; }
 .bed-option-reserved { color: #7b4bb7; font-weight: 600; }
@@ -7,31 +12,6 @@
 #bedSelect option {
     padding: 6px;
 }
-
-.bed-dropdown {
-  margin-bottom: 15px;
-}
-
-.dropdown-label {
-  font-weight: bold;
-  margin-top: 20px;
-  display: block;
-}
-
-.status-pill {
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: bold;
-  color: white;
-  margin-left: 6px;
-}
-
-.status-available { background: #28a745; }
-.status-occupied { background: #dc3545; }
-.status-reserved { background: #6f42c1; }
-.status-cleaning { background: #17a2b8; }
-.status-transferring { background: #ffc107; color: black; }
 
 
 /* ===========================================================
