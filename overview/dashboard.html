@@ -159,34 +159,49 @@
 
       <!-- UPDATE BED + DETAILS -->
       <section class="card">
-        <h3>Update bed status</h3>
-        <p class="muted">
-          Choose a bed and update its current status.
-        </p>
+  <h3>Update bed status</h3>
+  <p class="muted">Choose a bed from the proper ward and update its current status.</p>
 
-        <div class="filters-row">
-          <select id="bedSelect" class="input-select">
-            <option>Loading beds…</option>
-          </select>
+  <!-- ===================== -->
+  <!-- ICU DROPDOWN (WARD 1) -->
+  <!-- ===================== -->
+  <label class="dropdown-label">ICU Beds (Ward 1)</label>
+  <select id="icuSelect" class="input-select bed-dropdown"></select>
 
-          <select id="statusSelect" class="input-select">
-            <option value="available">Available</option>
-            <option value="occupied">Occupied</option>
-            <option value="reserved">Reserved</option>
-            <option value="cleaning">Cleaning</option>
-            <option value="transferring">Transferring</option>
-          </select>
+  <!-- ========================= -->
+  <!-- GENERAL DROPDOWN (WARD 2) -->
+  <!-- ========================= -->
+  <label class="dropdown-label">General Beds (Ward 2)</label>
+  <select id="generalSelect" class="input-select bed-dropdown"></select>
 
-          <input
-            id="patientIdInput"
-            class="input-select"
-            placeholder="Patient ID (only required if Occupied)"
-            style="max-width:180px;"
-          />
+  <!-- =========================== -->
+  <!-- ISOLATION DROPDOWN (WARD 3) -->
+  <!-- =========================== -->
+  <label class="dropdown-label">Isolation Beds (Ward 3)</label>
+  <select id="isolationSelect" class="input-select bed-dropdown"></select>
 
-          <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
-        </div>
-      </section>
+  <!-- ==== STATUS + PATIENT ENTRY ==== -->
+  <div class="filters-row" style="margin-top: 25px;">
+    <select id="statusSelect" class="input-select">
+      <option value="available">Available</option>
+      <option value="occupied">Occupied</option>
+      <option value="reserved">Reserved</option>
+      <option value="cleaning">Cleaning</option>
+      <option value="transferring">Transferring</option>
+    </select>
+
+    <input
+      id="patientIdInput"
+      type="number"
+      placeholder="Patient ID (if Occupied)"
+      class="input-select"
+      min="1"
+    />
+
+    <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+  </div>
+</section>
+
 
       <!-- BOTTOM ROW: DETAILS -->
       <section class="top-row">
@@ -234,115 +249,59 @@
         });
       }
 
-      async function loadBeds() {
+     async function loadBeds() {
   try {
     const res = await fetch(`${API_BASE}/beds`);
     const beds = await res.json();
-    ALL_BEDS = beds || [];
+    ALL_BEDS = beds;
 
-    const select = document.getElementById("bedSelect");
-    select.innerHTML = "";
+    // Dropdowns
+    const icu = document.getElementById("icuSelect");
+    const gen = document.getElementById("generalSelect");
+    const iso = document.getElementById("isolationSelect");
 
-    beds.forEach((b) => {
+    icu.innerHTML = "";
+    gen.innerHTML = "";
+    iso.innerHTML = "";
+
+    beds.forEach(b => {
+      const label = `Bed ${b.bed_number} — ${b.bed_status}`;
       const opt = document.createElement("option");
       opt.value = b.bed_number;
+      opt.textContent = label;
 
-      // Label shown in dropdown
-      opt.textContent = `${b.bed_number} — ${b.bed_status}`;
-
-      // Color class for readability
-      opt.classList.add(`bed-option-${b.bed_status}`);
-
-      select.appendChild(opt);
+      if (b.ward_id === 1) icu.appendChild(opt);
+      else if (b.ward_id === 2) gen.appendChild(opt);
+      else if (b.ward_id === 3) iso.appendChild(opt);
     });
 
-    // Auto-load info for first bed
-    if (beds.length > 0) {
-      loadBedInfo(beds[0].bed_number);
-      loadPatientInfo(beds[0].bed_number);
+    // Default select first available
+    const first = beds[0]?.bed_number;
+    if (first) {
+      loadBedInfo(first);
+      loadPatientInfo(first);
     }
 
-    // Event: When user selects a different bed
-    select.addEventListener("change", (e) => {
-      const bedNum = e.target.value;
-      loadBedInfo(bedNum);
-      loadPatientInfo(bedNum);
+    // Add auto-update on change
+    icu.addEventListener("change", e => {
+      loadBedInfo(e.target.value);
+      loadPatientInfo(e.target.value);
+    });
+    gen.addEventListener("change", e => {
+      loadBedInfo(e.target.value);
+      loadPatientInfo(e.target.value);
+    });
+    iso.addEventListener("change", e => {
+      loadBedInfo(e.target.value);
+      loadPatientInfo(e.target.value);
     });
 
-    // Update ward summary cards
     updateOverviewCards();
-
   } catch (err) {
     console.error("Error loading beds:", err);
-    document.getElementById("bedSelect").innerHTML =
-      "<option>Failed to load beds</option>";
   }
 }
 
-
-      function updateOverviewCards() {
-        const totalBeds = ALL_BEDS.length;
-
-        const counts = {
-          available: 0,
-          occupied: 0,
-          reserved: 0,
-          cleaning: 0,
-          transferring: 0,
-        };
-
-        ALL_BEDS.forEach((b) => {
-          if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
-        });
-
-        const inUse = counts.occupied + counts.transferring;
-        const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
-
-        document.getElementById("overallTotalBeds").textContent = totalBeds;
-        document.getElementById("overallOccupiedBeds").textContent = inUse;
-        document.getElementById("overallOccupancyPercent").textContent = pct;
-
-        document.getElementById("countAvailable").textContent = counts.available;
-        document.getElementById("countOccupied").textContent = counts.occupied;
-        document.getElementById("countReserved").textContent = counts.reserved;
-        document.getElementById("countCleaning").textContent = counts.cleaning;
-        document.getElementById("countTransferring").textContent = counts.transferring;
-
-        const wardStats = {};
-        ALL_BEDS.forEach((b) => {
-          const wid = b.ward_id;
-          if (!wardStats[wid]) {
-            wardStats[wid] = {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          }
-          wardStats[wid].total++;
-          if (wardStats[wid][b.bed_status] !== undefined) {
-            wardStats[wid][b.bed_status]++;
-          }
-        });
-
-        ["1", "2", "3"].forEach((wid) => {
-          const s =
-            wardStats[wid] || {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          document.getElementById(`ward-${wid}-total`).textContent = s.total;
-          document.getElementById(`ward-${wid}-inuse`).textContent =
-            s.occupied + s.transferring;
-          document.getElementById(`ward-${wid}-available`).textContent = s.available;
-        });
-      }
 
       async function loadBedInfo(bedNumber) {
         try {
