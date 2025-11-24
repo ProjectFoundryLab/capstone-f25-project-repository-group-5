@@ -256,58 +256,60 @@
         });
       }
 
-     async function loadBeds() {
+    async function loadBeds() {
   try {
     const res = await fetch(`${API_BASE}/beds`);
     const beds = await res.json();
-    ALL_BEDS = beds;
 
-    // Dropdowns
-    const icu = document.getElementById("icuSelect");
-    const gen = document.getElementById("generalSelect");
-    const iso = document.getElementById("isolationSelect");
+    // Group by ward
+    const ward1 = beds.filter(b => b.ward_id === 1);  // ICU North
+    const ward2 = beds.filter(b => b.ward_id === 2);  // General East
+    const ward3 = beds.filter(b => b.ward_id === 3);  // Isolation South
 
-    icu.innerHTML = "";
-    gen.innerHTML = "";
-    iso.innerHTML = "";
+    populateDropdown("select-ward-1", ward1);
+    populateDropdown("select-ward-2", ward2);
+    populateDropdown("select-ward-3", ward3);
 
-    beds.forEach(b => {
-      const label = `Bed ${b.bed_number} — ${b.bed_status}`;
-      const opt = document.createElement("option");
-      opt.value = b.bed_number;
-      opt.textContent = label;
+    handleCheckboxLocking();
 
-      if (b.ward_id === 1) icu.appendChild(opt);
-      else if (b.ward_id === 2) gen.appendChild(opt);
-      else if (b.ward_id === 3) iso.appendChild(opt);
-    });
-
-    // Default select first available
-    const first = beds[0]?.bed_number;
-    if (first) {
-      loadBedInfo(first);
-      loadPatientInfo(first);
-    }
-
-    // Add auto-update on change
-    icu.addEventListener("change", e => {
-      loadBedInfo(e.target.value);
-      loadPatientInfo(e.target.value);
-    });
-    gen.addEventListener("change", e => {
-      loadBedInfo(e.target.value);
-      loadPatientInfo(e.target.value);
-    });
-    iso.addEventListener("change", e => {
-      loadBedInfo(e.target.value);
-      loadPatientInfo(e.target.value);
-    });
-
-    updateOverviewCards();
   } catch (err) {
     console.error("Error loading beds:", err);
   }
 }
+
+function populateDropdown(selectId, beds) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = "";
+
+  beds.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b.bed_number;
+
+    opt.innerHTML = `
+      ${b.bed_number}
+      <span class="status-pill status-${b.bed_status}">
+        ${b.bed_status}
+      </span>
+    `;
+
+    select.appendChild(opt);
+  });
+}
+
+      function handleCheckboxLocking() {
+  const checks = document.querySelectorAll(".wing-check");
+
+  checks.forEach(c => {
+    c.addEventListener("change", () => {
+      if (c.checked) {
+        checks.forEach(o => {
+          if (o !== c) o.checked = false;
+        });
+      }
+    });
+  });
+}
+
 
 
       async function loadBedInfo(bedNumber) {
@@ -362,63 +364,52 @@
       }
 
       async function updateBed() {
-        const bedNumber = document.getElementById("bedSelect").value;
-        const new_status = document.getElementById("statusSelect").value;
-        const patientIdInput = document.getElementById("patientIdInput");
+  const checked = document.querySelector(".wing-check:checked");
 
-        if (!bedNumber) {
-          alert("Please select a bed first.");
-          return;
-        }
+  if (!checked) {
+    alert("Select which wing you are updating using the checkbox.");
+    return;
+  }
 
-        let patient_id = null;
+  const ward = checked.value;
+  const dropdown = document.getElementById(`select-ward-${ward}`);
+  const bedNumber = dropdown.value;
 
-        if (new_status === "available") {
-          patient_id = null;
-          if (patientIdInput) patientIdInput.value = "";
-        } else if (new_status === "occupied") {
-          const raw = (patientIdInput.value || "").trim();
-          if (!raw) {
-            alert("When setting a bed to 'Occupied', you must enter a patient ID.");
-            return;
-          }
-          const parsed = parseInt(raw, 10);
-          if (Number.isNaN(parsed) || parsed <= 0) {
-            alert("Patient ID must be a positive number.");
-            return;
-          }
-          patient_id = parsed;
-        } else {
-          const raw = (patientIdInput.value || "").trim();
-          patient_id = raw ? parseInt(raw, 10) : null;
-        }
+  const new_status = document.getElementById("statusSelect").value;
+  const patientInput = document.getElementById("patientIdInput").value.trim();
 
-        try {
-          const res = await fetch(`${API_BASE}/beds/assign`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bed_number: bedNumber,
-              bed_status: new_status,
-              patient_id: patient_id,
-            }),
-          });
+  let patient_id = null;
 
-          const text = await res.text();
-          if (!res.ok) {
-            alert(text || "Error updating bed");
-            return;
-          }
+  if (new_status === "occupied") {
+    if (!patientInput) {
+      alert("A patient ID is required when marking a bed as occupied.");
+      return;
+    }
+    patient_id = parseInt(patientInput);
+  }
 
-          alert("Bed updated successfully");
-          await loadBeds();
-          loadBedInfo(bedNumber);
-          loadPatientInfo(bedNumber);
-        } catch (err) {
-          console.error("Error updating bed:", err);
-          alert("Failed to update bed.");
-        }
-      }
+  try {
+    const res = await fetch(`${API_BASE}/beds/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bed_number: bedNumber,
+        bed_status: new_status,
+        patient_id: patient_id
+      })
+    });
+
+    const msg = await res.text();
+    alert(msg);
+
+    loadBeds();  // Refresh UI
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update bed.");
+  }
+}
+
 
       window.addEventListener("load", () => {
         setToday();
