@@ -1,3 +1,14 @@
+.bed-option-available { color: #1a7f37; font-weight: 600; }
+.bed-option-occupied { color: #d12c2c; font-weight: 600; }
+.bed-option-reserved { color: #7b4bb7; font-weight: 600; }
+.bed-option-cleaning { color: #c77700; font-weight: 600; }
+.bed-option-transferring { color: #005eb8; font-weight: 600; }
+
+#bedSelect option {
+    padding: 6px;
+}
+
+
 /* ===========================================================
    TOP ROW: Occupancy + Admissions Chart
    =========================================================== */
