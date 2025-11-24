@@ -235,42 +235,50 @@
       }
 
       async function loadBeds() {
-        try {
-          const res = await fetch(`${API_BASE}/beds`);
-          ALL_BEDS = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/beds`);
+    const beds = await res.json();
+    ALL_BEDS = beds || [];
 
-          const select = document.getElementById("bedSelect");
-          select.innerHTML = "";
+    const select = document.getElementById("bedSelect");
+    select.innerHTML = "";
 
-          ALL_BEDS.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.bed_number;
-            opt.dataset.wardId = b.ward_id;
-            opt.textContent = `Bed ${b.bed_number} (${
-              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-            })`;
-            select.appendChild(opt);
-          });
+    beds.forEach((b) => {
+      const opt = document.createElement("option");
+      opt.value = b.bed_number;
 
-          if (ALL_BEDS.length > 0) {
-            const firstBedNumber = ALL_BEDS[0].bed_number;
-            loadBedInfo(firstBedNumber);
-            loadPatientInfo(firstBedNumber);
-          }
+      // Label shown in dropdown
+      opt.textContent = `${b.bed_number} — ${b.bed_status}`;
 
-          updateOverviewCards();
+      // Color class for readability
+      opt.classList.add(`bed-option-${b.bed_status}`);
 
-          select.addEventListener("change", (e) => {
-            const bedNumber = e.target.value;
-            if (bedNumber) {
-              loadBedInfo(bedNumber);
-              loadPatientInfo(bedNumber);
-            }
-          });
-        } catch (err) {
-          console.error("Error loading beds:", err);
-        }
-      }
+      select.appendChild(opt);
+    });
+
+    // Auto-load info for first bed
+    if (beds.length > 0) {
+      loadBedInfo(beds[0].bed_number);
+      loadPatientInfo(beds[0].bed_number);
+    }
+
+    // Event: When user selects a different bed
+    select.addEventListener("change", (e) => {
+      const bedNum = e.target.value;
+      loadBedInfo(bedNum);
+      loadPatientInfo(bedNum);
+    });
+
+    // Update ward summary cards
+    updateOverviewCards();
+
+  } catch (err) {
+    console.error("Error loading beds:", err);
+    document.getElementById("bedSelect").innerHTML =
+      "<option>Failed to load beds</option>";
+  }
+}
+
 
       function updateOverviewCards() {
         const totalBeds = ALL_BEDS.length;
