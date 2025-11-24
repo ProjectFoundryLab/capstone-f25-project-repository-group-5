@@ -18,6 +18,22 @@
   display: block;
 }
 
+.status-pill {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  margin-left: 6px;
+}
+
+.status-available { background: #28a745; }
+.status-occupied { background: #dc3545; }
+.status-reserved { background: #6f42c1; }
+.status-cleaning { background: #17a2b8; }
+.status-transferring { background: #ffc107; color: black; }
+
+
 /* ===========================================================
    TOP ROW: Occupancy + Admissions Chart
    =========================================================== */
