@@ -158,55 +158,53 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-     <section class="card">
-  <h3>Update bed status</h3>
-  <p class="muted">Select a wing and choose which bed to update.</p>
+    <section class="card">
+    <h3>Update bed status</h3>
+    <p class="muted">Select a wing and choose which bed to update.</p>
 
-  <div class="bed-groups">
-
-    <!-- ICU North -->
-    <div class="bed-group">
-      <label>
-        <input type="checkbox" name="wingSelect" value="1" class="wing-check" />
-        <strong>ICU North (A beds)</strong>
-      </label>
-      <select id="select-ward-1" class="input-select"></select>
+    <!-- Wing A -->
+    <div style="margin-bottom: 10px;">
+        <label>
+            <input type="checkbox" id="wing-A">
+            <strong>ICU North (A beds)</strong>
+        </label>
+        <select id="select-A" class="input-select"></select>
     </div>
 
-    <!-- General East -->
-    <div class="bed-group">
-      <label>
-        <input type="checkbox" name="wingSelect" value="2" class="wing-check" />
-        <strong>General East (B beds)</strong>
-      </label>
-      <select id="select-ward-2" class="input-select"></select>
+    <!-- Wing B -->
+    <div style="margin-bottom: 10px;">
+        <label>
+            <input type="checkbox" id="wing-B">
+            <strong>General East (B beds)</strong>
+        </label>
+        <select id="select-B" class="input-select"></select>
     </div>
 
-    <!-- Isolation South -->
-    <div class="bed-group">
-      <label>
-        <input type="checkbox" name="wingSelect" value="3" class="wing-check" />
-        <strong>Isolation South (C beds)</strong>
-      </label>
-      <select id="select-ward-3" class="input-select"></select>
+    <!-- Wing C -->
+    <div style="margin-bottom: 10px;">
+        <label>
+            <input type="checkbox" id="wing-C">
+            <strong>Isolation South (C beds)</strong>
+        </label>
+        <select id="select-C" class="input-select"></select>
     </div>
 
-  </div>
+    <!-- Status + patient -->
+    <div class="filters-row">
+        <select id="statusSelect" class="input-select">
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="reserved">Reserved</option>
+            <option value="cleaning">Cleaning</option>
+            <option value="transferring">Transferring</option>
+        </select>
 
-  <div class="filters-row" style="margin-top:20px;">
-    <select id="statusSelect" class="input-select">
-      <option value="available">Available</option>
-      <option value="occupied">Occupied</option>
-      <option value="reserved">Reserved</option>
-      <option value="cleaning">Cleaning</option>
-      <option value="transferring">Transferring</option>
-    </select>
-
-    <input id="patientIdInput" class="input-select" placeholder="Patient ID (only if needed)" />
-
-    <button class="small-btn" onclick="updateBed()">Update bed</button>
-  </div>
+        <input id="patientIdInput" class="input-select" placeholder="Patient ID (only for occupied)">
+        
+        <button class="small-btn" onclick="updateBed()">Update bed</button>
+    </div>
 </section>
+
 
 
 
@@ -363,46 +361,94 @@ function populateDropdown(selectId, beds) {
         }
       }
 
-      async function updateBed() {
-  const checked = document.querySelector(".wing-check:checked");
+      //---------------------------------------------------
+// FIND WHICH WING IS SELECTED
+//---------------------------------------------------
+function getSelectedWing() {
+  const wings = ["A", "B", "C"];
 
-  if (!checked) {
-    alert("Select which wing you are updating using the checkbox.");
+  for (const w of wings) {
+    const checked = document.getElementById(`wing-${w}`).checked;
+    if (checked) return w;
+  }
+  return null;
+}
+
+//---------------------------------------------------
+// UPDATE BED
+//---------------------------------------------------
+async function updateBed() {
+  const wing = getSelectedWing();
+  if (!wing) {
+    alert("Please select which wing (A/B/C) you want to update.");
     return;
   }
 
-  const ward = checked.value;
-  const dropdown = document.getElementById(`select-ward-${ward}`);
-  const bedNumber = dropdown.value;
+  // Get dropdown for selected wing
+  const select = document.getElementById(`select-${wing}`);
+  const selectedOption = select.options[select.selectedIndex];
 
-  const new_status = document.getElementById("statusSelect").value;
-  const patientInput = document.getElementById("patientIdInput").value.trim();
+  const bedNumber = selectedOption.dataset.bedNumber;   // <-- CRITICAL
+  const currentStatus = selectedOption.dataset.status;
 
-  let patient_id = null;
-
-  if (new_status === "occupied") {
-    if (!patientInput) {
-      alert("A patient ID is required when marking a bed as occupied.");
-      return;
-    }
-    patient_id = parseInt(patientInput);
+  if (!bedNumber) {
+    alert("Could not determine bed_number.");
+    return;
   }
 
+  const newStatus = document.getElementById("statusSelect").value;
+  const patientInput = document.getElementById("patientIdInput");
+
+  let patientId = null;
+
+  //------------------------------------------
+  // RULES
+  //------------------------------------------
+  if (newStatus === "available") {
+    patientId = null;
+    patientInput.value = "";
+  } else if (newStatus === "occupied") {
+    if (!patientInput.value.trim()) {
+      alert("You must enter a patient ID when setting a bed to 'Occupied'.");
+      return;
+    }
+    const parsed = parseInt(patientInput.value.trim(), 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      alert("Invalid patient ID.");
+      return;
+    }
+    patientId = parsed;
+  } else {
+    patientId = patientInput.value.trim() ? parseInt(patientInput.value.trim(), 10) : null;
+  }
+
+  //------------------------------------------
+  // SEND UPDATE TO BACKEND
+  //------------------------------------------
   try {
     const res = await fetch(`${API_BASE}/beds/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         bed_number: bedNumber,
-        bed_status: new_status,
-        patient_id: patient_id
-      })
+        bed_status: newStatus,
+        patient_id: patientId
+      }),
     });
 
-    const msg = await res.text();
-    alert(msg);
+    const text = await res.text();
 
-    loadBeds();  // Refresh UI
+    if (!res.ok) {
+      alert(text || "Error updating bed.");
+      return;
+    }
+
+    alert("Bed updated successfully.");
+
+    // Refresh UI
+    loadBeds();
+    loadBedInfo(bedNumber);
+    loadPatientInfo(bedNumber);
 
   } catch (err) {
     console.error(err);
