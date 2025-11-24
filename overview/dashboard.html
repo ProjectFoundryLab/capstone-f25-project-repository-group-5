@@ -158,55 +158,35 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-    <section class="card">
-    <h3>Update bed status</h3>
-    <p class="muted">Select a wing and choose which bed to update.</p>
+      <section class="card">
+        <h3>Update bed status</h3>
+        <p class="muted">
+          Choose a bed and update its current status.
+        </p>
 
-    <!-- Wing A -->
-    <div style="margin-bottom: 10px;">
-        <label>
-            <input type="checkbox" id="wing-A">
-            <strong>ICU North (A beds)</strong>
-        </label>
-        <select id="select-A" class="input-select"></select>
-    </div>
+        <div class="filters-row">
+          <select id="bedSelect" class="input-select">
+            <option>Loading beds…</option>
+          </select>
 
-    <!-- Wing B -->
-    <div style="margin-bottom: 10px;">
-        <label>
-            <input type="checkbox" id="wing-B">
-            <strong>General East (B beds)</strong>
-        </label>
-        <select id="select-B" class="input-select"></select>
-    </div>
-
-    <!-- Wing C -->
-    <div style="margin-bottom: 10px;">
-        <label>
-            <input type="checkbox" id="wing-C">
-            <strong>Isolation South (C beds)</strong>
-        </label>
-        <select id="select-C" class="input-select"></select>
-    </div>
-
-    <!-- Status + patient -->
-    <div class="filters-row">
-        <select id="statusSelect" class="input-select">
+          <select id="statusSelect" class="input-select">
             <option value="available">Available</option>
             <option value="occupied">Occupied</option>
             <option value="reserved">Reserved</option>
             <option value="cleaning">Cleaning</option>
             <option value="transferring">Transferring</option>
-        </select>
+          </select>
 
-        <input id="patientIdInput" class="input-select" placeholder="Patient ID (only for occupied)">
-        
-        <button class="small-btn" onclick="updateBed()">Update bed</button>
-    </div>
-</section>
+          <input
+            id="patientIdInput"
+            class="input-select"
+            placeholder="Patient ID (only required if Occupied)"
+            style="max-width:180px;"
+          />
 
-
-
+          <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+        </div>
+      </section>
 
       <!-- BOTTOM ROW: DETAILS -->
       <section class="top-row">
@@ -254,61 +234,115 @@
         });
       }
 
-    async function loadBeds() {
+      async function loadBeds() {
   try {
     const res = await fetch(`${API_BASE}/beds`);
     const beds = await res.json();
+    ALL_BEDS = beds || [];
 
-    // Group by ward
-    const ward1 = beds.filter(b => b.ward_id === 1);  // ICU North
-    const ward2 = beds.filter(b => b.ward_id === 2);  // General East
-    const ward3 = beds.filter(b => b.ward_id === 3);  // Isolation South
+    const select = document.getElementById("bedSelect");
+    select.innerHTML = "";
 
-    populateDropdown("select-ward-1", ward1);
-    populateDropdown("select-ward-2", ward2);
-    populateDropdown("select-ward-3", ward3);
+    beds.forEach((b) => {
+      const opt = document.createElement("option");
+      opt.value = b.bed_number;
 
-    handleCheckboxLocking();
+      // Label shown in dropdown
+      opt.textContent = `${b.bed_number} — ${b.bed_status}`;
+
+      // Color class for readability
+      opt.classList.add(`bed-option-${b.bed_status}`);
+
+      select.appendChild(opt);
+    });
+
+    // Auto-load info for first bed
+    if (beds.length > 0) {
+      loadBedInfo(beds[0].bed_number);
+      loadPatientInfo(beds[0].bed_number);
+    }
+
+    // Event: When user selects a different bed
+    select.addEventListener("change", (e) => {
+      const bedNum = e.target.value;
+      loadBedInfo(bedNum);
+      loadPatientInfo(bedNum);
+    });
+
+    // Update ward summary cards
+    updateOverviewCards();
 
   } catch (err) {
     console.error("Error loading beds:", err);
+    document.getElementById("bedSelect").innerHTML =
+      "<option>Failed to load beds</option>";
   }
 }
 
-function populateDropdown(selectId, beds) {
-  const select = document.getElementById(selectId);
-  select.innerHTML = "";
 
-  beds.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b.bed_number;
+      function updateOverviewCards() {
+        const totalBeds = ALL_BEDS.length;
 
-    opt.innerHTML = `
-      ${b.bed_number}
-      <span class="status-pill status-${b.bed_status}">
-        ${b.bed_status}
-      </span>
-    `;
+        const counts = {
+          available: 0,
+          occupied: 0,
+          reserved: 0,
+          cleaning: 0,
+          transferring: 0,
+        };
 
-    select.appendChild(opt);
-  });
-}
+        ALL_BEDS.forEach((b) => {
+          if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
+        });
 
-      function handleCheckboxLocking() {
-  const checks = document.querySelectorAll(".wing-check");
+        const inUse = counts.occupied + counts.transferring;
+        const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
 
-  checks.forEach(c => {
-    c.addEventListener("change", () => {
-      if (c.checked) {
-        checks.forEach(o => {
-          if (o !== c) o.checked = false;
+        document.getElementById("overallTotalBeds").textContent = totalBeds;
+        document.getElementById("overallOccupiedBeds").textContent = inUse;
+        document.getElementById("overallOccupancyPercent").textContent = pct;
+
+        document.getElementById("countAvailable").textContent = counts.available;
+        document.getElementById("countOccupied").textContent = counts.occupied;
+        document.getElementById("countReserved").textContent = counts.reserved;
+        document.getElementById("countCleaning").textContent = counts.cleaning;
+        document.getElementById("countTransferring").textContent = counts.transferring;
+
+        const wardStats = {};
+        ALL_BEDS.forEach((b) => {
+          const wid = b.ward_id;
+          if (!wardStats[wid]) {
+            wardStats[wid] = {
+              total: 0,
+              occupied: 0,
+              available: 0,
+              reserved: 0,
+              cleaning: 0,
+              transferring: 0,
+            };
+          }
+          wardStats[wid].total++;
+          if (wardStats[wid][b.bed_status] !== undefined) {
+            wardStats[wid][b.bed_status]++;
+          }
+        });
+
+        ["1", "2", "3"].forEach((wid) => {
+          const s =
+            wardStats[wid] || {
+              total: 0,
+              occupied: 0,
+              available: 0,
+              reserved: 0,
+              cleaning: 0,
+              transferring: 0,
+            };
+          document.getElementById(`ward-${wid}-total`).textContent = s.total;
+          document.getElementById(`ward-${wid}-inuse`).textContent =
+            s.occupied + s.transferring;
+          document.getElementById(`ward-${wid}-available`).textContent = s.available;
         });
       }
-    });
-  });
-}
-
-
 
       async function loadBedInfo(bedNumber) {
         try {
@@ -361,101 +395,64 @@ function populateDropdown(selectId, beds) {
         }
       }
 
-      //---------------------------------------------------
-// FIND WHICH WING IS SELECTED
-//---------------------------------------------------
-function getSelectedWing() {
-  const wings = ["A", "B", "C"];
+      async function updateBed() {
+        const bedNumber = document.getElementById("bedSelect").value;
+        const new_status = document.getElementById("statusSelect").value;
+        const patientIdInput = document.getElementById("patientIdInput");
 
-  for (const w of wings) {
-    const checked = document.getElementById(`wing-${w}`).checked;
-    if (checked) return w;
-  }
-  return null;
-}
+        if (!bedNumber) {
+          alert("Please select a bed first.");
+          return;
+        }
 
-//---------------------------------------------------
-// UPDATE BED
-//---------------------------------------------------
-async function updateBed() {
-  const wing = getSelectedWing();
-  if (!wing) {
-    alert("Please select which wing (A/B/C) you want to update.");
-    return;
-  }
+        let patient_id = null;
 
-  // Get dropdown for selected wing
-  const select = document.getElementById(`select-${wing}`);
-  const selectedOption = select.options[select.selectedIndex];
+        if (new_status === "available") {
+          patient_id = null;
+          if (patientIdInput) patientIdInput.value = "";
+        } else if (new_status === "occupied") {
+          const raw = (patientIdInput.value || "").trim();
+          if (!raw) {
+            alert("When setting a bed to 'Occupied', you must enter a patient ID.");
+            return;
+          }
+          const parsed = parseInt(raw, 10);
+          if (Number.isNaN(parsed) || parsed <= 0) {
+            alert("Patient ID must be a positive number.");
+            return;
+          }
+          patient_id = parsed;
+        } else {
+          const raw = (patientIdInput.value || "").trim();
+          patient_id = raw ? parseInt(raw, 10) : null;
+        }
 
-  const bedNumber = selectedOption.dataset.bedNumber;   // <-- CRITICAL
-  const currentStatus = selectedOption.dataset.status;
+        try {
+          const res = await fetch(`${API_BASE}/beds/assign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bed_number: bedNumber,
+              bed_status: new_status,
+              patient_id: patient_id,
+            }),
+          });
 
-  if (!bedNumber) {
-    alert("Could not determine bed_number.");
-    return;
-  }
+          const text = await res.text();
+          if (!res.ok) {
+            alert(text || "Error updating bed");
+            return;
+          }
 
-  const newStatus = document.getElementById("statusSelect").value;
-  const patientInput = document.getElementById("patientIdInput");
-
-  let patientId = null;
-
-  //------------------------------------------
-  // RULES
-  //------------------------------------------
-  if (newStatus === "available") {
-    patientId = null;
-    patientInput.value = "";
-  } else if (newStatus === "occupied") {
-    if (!patientInput.value.trim()) {
-      alert("You must enter a patient ID when setting a bed to 'Occupied'.");
-      return;
-    }
-    const parsed = parseInt(patientInput.value.trim(), 10);
-    if (isNaN(parsed) || parsed <= 0) {
-      alert("Invalid patient ID.");
-      return;
-    }
-    patientId = parsed;
-  } else {
-    patientId = patientInput.value.trim() ? parseInt(patientInput.value.trim(), 10) : null;
-  }
-
-  //------------------------------------------
-  // SEND UPDATE TO BACKEND
-  //------------------------------------------
-  try {
-    const res = await fetch(`${API_BASE}/beds/update`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bed_number: bedNumber,
-        bed_status: newStatus,
-        patient_id: patientId
-      }),
-    });
-
-    const text = await res.text();
-
-    if (!res.ok) {
-      alert(text || "Error updating bed.");
-      return;
-    }
-
-    alert("Bed updated successfully.");
-
-    // Refresh UI
-    loadBeds();
-    loadBedInfo(bedNumber);
-    loadPatientInfo(bedNumber);
-
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update bed.");
-  }
-}
-
+          alert("Bed updated successfully");
+          await loadBeds();
+          loadBedInfo(bedNumber);
+          loadPatientInfo(bedNumber);
+        } catch (err) {
+          console.error("Error updating bed:", err);
+          alert("Failed to update bed.");
+        }
+      }
 
       window.addEventListener("load", () => {
         setToday();
