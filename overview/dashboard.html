@@ -158,30 +158,42 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-      <section class="card">
+     <section class="card">
   <h3>Update bed status</h3>
-  <p class="muted">Choose a bed from the proper ward and update its current status.</p>
+  <p class="muted">Select a wing and choose which bed to update.</p>
 
-  <!-- ===================== -->
-  <!-- ICU DROPDOWN (WARD 1) -->
-  <!-- ===================== -->
-  <label class="dropdown-label">ICU Beds (Ward 1)</label>
-  <select id="icuSelect" class="input-select bed-dropdown"></select>
+  <div class="bed-groups">
 
-  <!-- ========================= -->
-  <!-- GENERAL DROPDOWN (WARD 2) -->
-  <!-- ========================= -->
-  <label class="dropdown-label">General Beds (Ward 2)</label>
-  <select id="generalSelect" class="input-select bed-dropdown"></select>
+    <!-- ICU North -->
+    <div class="bed-group">
+      <label>
+        <input type="checkbox" name="wingSelect" value="1" class="wing-check" />
+        <strong>ICU North (A beds)</strong>
+      </label>
+      <select id="select-ward-1" class="input-select"></select>
+    </div>
 
-  <!-- =========================== -->
-  <!-- ISOLATION DROPDOWN (WARD 3) -->
-  <!-- =========================== -->
-  <label class="dropdown-label">Isolation Beds (Ward 3)</label>
-  <select id="isolationSelect" class="input-select bed-dropdown"></select>
+    <!-- General East -->
+    <div class="bed-group">
+      <label>
+        <input type="checkbox" name="wingSelect" value="2" class="wing-check" />
+        <strong>General East (B beds)</strong>
+      </label>
+      <select id="select-ward-2" class="input-select"></select>
+    </div>
 
-  <!-- ==== STATUS + PATIENT ENTRY ==== -->
-  <div class="filters-row" style="margin-top: 25px;">
+    <!-- Isolation South -->
+    <div class="bed-group">
+      <label>
+        <input type="checkbox" name="wingSelect" value="3" class="wing-check" />
+        <strong>Isolation South (C beds)</strong>
+      </label>
+      <select id="select-ward-3" class="input-select"></select>
+    </div>
+
+  </div>
+
+  <div class="filters-row" style="margin-top:20px;">
     <select id="statusSelect" class="input-select">
       <option value="available">Available</option>
       <option value="occupied">Occupied</option>
@@ -190,17 +202,12 @@
       <option value="transferring">Transferring</option>
     </select>
 
-    <input
-      id="patientIdInput"
-      type="number"
-      placeholder="Patient ID (if Occupied)"
-      class="input-select"
-      min="1"
-    />
+    <input id="patientIdInput" class="input-select" placeholder="Patient ID (only if needed)" />
 
-    <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+    <button class="small-btn" onclick="updateBed()">Update bed</button>
   </div>
 </section>
+
 
 
       <!-- BOTTOM ROW: DETAILS -->
