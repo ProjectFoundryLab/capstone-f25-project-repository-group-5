@@ -8,6 +8,15 @@
     padding: 6px;
 }
 
+.bed-dropdown {
+  margin-bottom: 15px;
+}
+
+.dropdown-label {
+  font-weight: bold;
+  margin-top: 20px;
+  display: block;
+}
 
 /* ===========================================================
    TOP ROW: Occupancy + Admissions Chart
