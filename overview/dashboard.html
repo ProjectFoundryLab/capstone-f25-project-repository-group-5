@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -27,11 +27,13 @@
         </div>
 
         <div class="sidebar-user">
+
           <div class="avatar-circle" id="userInitials">JS</div>
           <div class="user-meta">
             <span class="user-name" id="userName">Loading...</span>
             <span class="user-role" id="userRole">Role...</span>
           </div>
+
         </div>
       </div>
 
@@ -46,6 +48,7 @@
         <a href="../operations/manage-rooms.html">Manage rooms</a>
 
         <a href="../index.html" class="logout-link">Logout</a>
+
       </nav>
     </aside>
 
@@ -68,8 +71,8 @@
         </p>
       </section>
 
-      <!-- TOP ROW: OCCUPANCY + LOOKER STUDIO ADMISSIONS -->
-      <section class="top-row top-row-main">
+      <!-- TOP ROW: OCCUPANCY + GRAFANA PLACEHOLDER -->
+      <section class="top-row">
         <!-- LEFT: OCCUPANCY -->
         <div class="card occupancy-card">
           <h3>Occupancy</h3>
@@ -86,7 +89,7 @@
           <hr class="card-divider" />
 
           <div class="status-header">Bed status</div>
-          <ul class="status-list vertical-status">
+          <ul class="status-list inline-status">
             <li>
               <span class="status-label status-available">Available</span>
               <span class="status-value" id="countAvailable">—</span>
@@ -110,19 +113,11 @@
           </ul>
         </div>
 
-        <!-- RIGHT: ADMISSIONS CHART -->
-        <div class="card chart-card">
-          <div class="chart-frame">
-            <iframe
-              src="https://lookerstudio.google.com/embed/reporting/6e261ff2-c6fa-45c8-8a08-9237021c09ca/page/ZQWgF"
-              width="100%"
-              height="100%"
-              frameborder="0"
-              style="border:0;"
-              allowfullscreen
-              sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
-            </iframe>
-          </div>
+        <!-- RIGHT: GRAFANA PLACEHOLDER -->
+        <div class="card placeholder-card">
+          <h3>New admissions</h3>
+          <p class="muted">Reserved space for Grafana admissions chart.</p>
+          <div class="placeholder-area"></div>
         </div>
       </section>
 
@@ -158,16 +153,38 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-      <section class="card">
-        <h3>Update bed status</h3>
-        <p class="muted">
-          Choose a bed and update its current status.
-        </p>
+     <section class="card">
+  <h3>Update bed status</h3>
+  <p class="muted">
+    Choose a bed and update its current status.
+  </p>
 
-        <div class="filters-row">
-          <select id="bedSelect" class="input-select">
-            <option>Loading beds…</option>
-          </select>
+  <div class="filters-row">
+    <select id="bedSelect" class="input-select">
+      <option>Loading beds…</option>
+    </select>
+
+    <select id="statusSelect" class="input-select">
+      <option value="available">Available</option>
+      <option value="occupied">Occupied</option>
+      <option value="reserved">Reserved</option>
+      <option value="cleaning">Cleaning</option>
+      <option value="transferring">Transferring</option>
+    </select>
+
+    <!-- NEW: Patient ID input (used when status = occupied) -->
+    <input 
+  id="patientIdInput"
+  class="input-select"
+  placeholder="Patient ID (only required if Occupied)"
+  style="max-width:180px;"
+/>
+
+
+    <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+  </div>
+</section>
+
 
           <select id="statusSelect" class="input-select">
             <option value="available">Available</option>
@@ -177,18 +194,10 @@
             <option value="transferring">Transferring</option>
           </select>
 
-          <input
-            id="patientIdInput"
-            class="input-select"
-            placeholder="Patient ID (only required if Occupied)"
-            style="max-width:180px;"
-          />
-
           <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
         </div>
       </section>
 
-      <!-- BOTTOM ROW: DETAILS -->
       <section class="top-row">
         <div class="card">
           <h3>Bed details</h3>
@@ -211,290 +220,319 @@
       </section>
     </main>
 
+
+<div id="patientAssignBox" style="display:none; margin-top:10px;">
+  <label>Assign Patient ID</label>
+  <input type="number" id="assignPatientId" class="input-select" placeholder="Enter Patient ID" />
+</div>
+
+
     <!-- =========================
          SCRIPTS
          ========================= -->
-    <script>
-      const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
+ <script>
+const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
 
-      const WARD_LABELS = {
-        1: "ICU North",
-        2: "General East",
-        3: "Isolation South",
-      };
+const WARD_LABELS = {
+  1: "ICU North",
+  2: "General East",
+  3: "Isolation South"
+};
 
-      let ALL_BEDS = [];
+let ALL_BEDS = [];
 
-      function setToday() {
-        const el = document.getElementById("todayValue");
-        const now = new Date();
-        el.textContent = now.toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+// ------------------------------
+// Today display
+// ------------------------------
+function setToday() {
+  const el = document.getElementById("todayValue");
+  const now = new Date();
+  el.textContent = now.toLocaleString("en-US", { month: "short", day: "numeric" });
+}
+
+// ------------------------------
+// Load beds
+// ------------------------------
+async function loadBeds() {
+  try {
+    const res = await fetch(`${API_BASE}/beds`);
+    ALL_BEDS = await res.json();
+
+    const select = document.getElementById("bedSelect");
+    select.innerHTML = "";
+
+    ALL_BEDS.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.bed_id;   
+      opt.dataset.bedNumber = b.bed_number; 
+      opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
+      select.appendChild(opt);
+    });
+
+    if (ALL_BEDS.length > 0) {
+      loadBedInfo(ALL_BEDS[0].bed_number);
+      loadPatientInfo(ALL_BEDS[0].bed_number);
+    }
+
+    updateOverviewCards();
+
+    // Event: change bed
+    select.addEventListener("change", e => {
+      loadBedInfo(e.target.value);
+      loadPatientInfo(e.target.value);
+    });
+
+  } catch (err) {
+    console.error("Error loading beds:", err);
+  }
+}
+
+// ------------------------------
+// Overview top cards
+// ------------------------------
+function updateOverviewCards() {
+  const totalBeds = ALL_BEDS.length;
+
+  const counts = {
+    available: 0,
+    occupied: 0,
+    reserved: 0,
+    cleaning: 0,
+    transferring: 0
+  };
+
+  ALL_BEDS.forEach(b => {
+    if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
+  });
+
+  const inUse = counts.occupied + counts.transferring;
+  const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
+
+  document.getElementById("overallTotalBeds").textContent = totalBeds;
+  document.getElementById("overallOccupiedBeds").textContent = inUse;
+  document.getElementById("overallOccupancyPercent").textContent = pct;
+
+  document.getElementById("countAvailable").textContent = counts.available;
+  document.getElementById("countOccupied").textContent = counts.occupied;
+  document.getElementById("countReserved").textContent = counts.reserved;
+  document.getElementById("countCleaning").textContent = counts.cleaning;
+  document.getElementById("countTransferring").textContent = counts.transferring;
+
+  // per-ward summary
+  const wardStats = {};
+  ALL_BEDS.forEach(b => {
+    const wid = b.ward_id;
+    if (!wardStats[wid]) {
+      wardStats[wid] = { total: 0, occupied: 0, available: 0, reserved: 0, cleaning: 0, transferring: 0 };
+    }
+    wardStats[wid].total++;
+    if (wardStats[wid][b.bed_status] !== undefined) wardStats[wid][b.bed_status]++;
+  });
+
+  ["1", "2", "3"].forEach(wid => {
+    const s = wardStats[wid] || { total: 0, occupied: 0, available: 0, reserved: 0, cleaning: 0, transferring: 0 };
+    document.getElementById(`ward-${wid}-total`).textContent = s.total;
+    document.getElementById(`ward-${wid}-inuse`).textContent = s.occupied + s.transferring;
+    document.getElementById(`ward-${wid}-available`).textContent = s.available;
+  });
+}
+
+// ------------------------------
+// Load bed details
+// ------------------------------
+async function loadBedInfo(bedNumber) {
+  try {
+    const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
+    const data = await res.json();
+
+    const box = document.getElementById("bedInfoBox");
+    const content = document.getElementById("bedInfoContent");
+
+    box.style.display = "block";
+    content.innerHTML = `
+      <strong>Bed number:</strong> ${data.bed_number}<br>
+      <strong>Status:</strong> ${data.bed_status}<br>
+      <strong>Type:</strong> ${data.bed_type}<br>
+      <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
+      <strong>Patient assigned:</strong> ${data.patient_id ?? "None"}
+    `;
+
+  } catch (err) {
+    console.error("Error loading bed info:", err);
+  }
+}
+
+// ------------------------------
+// Load patient details
+// ------------------------------
+async function loadPatientInfo(bedNumber) {
+  const box = document.getElementById("patientInfo");
+
+  try {
+    const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
+    if (!res.ok) {
+      box.style.display = "none";
+      return;
+    }
+
+    const d = await res.json();
+
+    document.getElementById("pi_id").textContent = d.patient_id ?? "None";
+    document.getElementById("pi_name").textContent = d.first_name
+      ? `${d.first_name} ${d.last_name}`
+      : "No patient assigned";
+    document.getElementById("pi_status").textContent = d.admission_status ?? "N/A";
+    document.getElementById("pi_bed_status").textContent = d.bed_status;
+    document.getElementById("pi_bed_type").textContent = d.bed_type;
+    document.getElementById("pi_ward").textContent = d.ward_name;
+
+    box.style.display = "block";
+  } catch (err) {
+    console.error("Error loading patient info:", err);
+    box.style.display = "none";
+  }
+}
+
+// ------------------------------
+// Show or hide assign patient box
+// ------------------------------
+function showPatientAssignBox() {
+  const status = document.getElementById("statusSelect").value;
+  const assignBox = document.getElementById("patientAssignBox");
+
+  if (status === "occupied") {
+    assignBox.style.display = "block";
+  } else {
+    assignBox.style.display = "none";
+  }
+}
+
+document.getElementById("statusSelect").addEventListener("change", showPatientAssignBox);
+
+// ------------------------------
+// Update bed (write to DB)
+// ------------------------------
+async function updateBed() {
+  const bedId = parseInt(document.getElementById("bedSelect").value);
+  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
+  const bedNumber = option?.dataset.bedNumber;
+
+  const new_status = document.getElementById("statusSelect").value;
+  const patientIdInput = document.getElementById("patientIdInput");
+
+  if (!bedId || !bedNumber) {
+    alert("Missing bed_id or bed_number");
+    return;
+  }
+
+  let patient_id = null;
+
+  if (new_status === "available") {
+    patient_id = null;
+    if (patientIdInput) patientIdInput.value = "";
+  } 
+  else if (new_status === "occupied") {
+    const raw = (patientIdInput.value || "").trim();
+    if (!raw) {
+      alert("When setting a bed to 'Occupied', you must enter a patient ID.");
+      return;
+    }
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      alert("Patient ID must be a positive number.");
+      return;
+    }
+    patient_id = parsed;
+  } 
+  else {
+    const raw = (patientIdInput.value || "").trim();
+    patient_id = raw ? parseInt(raw, 10) : null;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/beds/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bed_id: bedId,
+        bed_status: new_status,
+        patient_id: patient_id,
+      }),
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      alert(text || "Error updating bed");
+      return;
+    }
+
+    alert("Bed updated successfully");
+    loadBeds();
+    loadBedInfo(bedNumber);
+    loadPatientInfo(bedNumber);
+
+  } catch (err) {
+    console.error("Error updating bed:", err);
+    alert("Failed to update bed.");
+  }
+}
+
+
+
+window.addEventListener("load", () => {
+  setToday();
+  loadBeds();
+});
+</script>
+
+  <!-- === FIREBASE USER DISPLAY === -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
+      authDomain: "sqldatabasetest-473020.firebaseapp.com",
+      projectId: "sqldatabasetest-473020",
+      storageBucket: "sqldatabasetest-473020.appspot.com",  // ← FIXED
+      messagingSenderId: "725327609427",
+      appId: "1:725327609427:web:989af1506e170afc0650a6",
+      measurementId: "G-WCZ3JSGH71"
+    };
+
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "../index.html"; // Nobody logged in → back to login
+        return;
       }
 
-      async function loadBeds() {
-        try {
-          const res = await fetch(`${API_BASE}/beds`);
-          ALL_BEDS = await res.json();
+      // Pull user’s profile from Firestore
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
 
-          const select = document.getElementById("bedSelect");
-          select.innerHTML = "";
+      if (!snap.exists()) return;
 
-          ALL_BEDS.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.bed_number;
-            opt.dataset.wardId = b.ward_id;
-            opt.textContent = `Bed ${b.bed_number} (${
-              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-            })`;
-            select.appendChild(opt);
-          });
+      const data = snap.data();
 
-          if (ALL_BEDS.length > 0) {
-            const firstBedNumber = ALL_BEDS[0].bed_number;
-            loadBedInfo(firstBedNumber);
-            loadPatientInfo(firstBedNumber);
-          }
+      // Update sidebar text
+      document.getElementById("userName").textContent = data.fullName;
+      document.getElementById("userRole").textContent = data.role;
 
-          updateOverviewCards();
+      // Initials bubble
+      const initials = data.fullName
+        .split(" ")
+        .map((n) => n[0])
+        .join("");
 
-          select.addEventListener("change", (e) => {
-            const bedNumber = e.target.value;
-            if (bedNumber) {
-              loadBedInfo(bedNumber);
-              loadPatientInfo(bedNumber);
-            }
-          });
-        } catch (err) {
-          console.error("Error loading beds:", err);
-        }
-      }
+      document.getElementById("userInitials").textContent = initials;
+    });
+  </script>
 
-      function updateOverviewCards() {
-        const totalBeds = ALL_BEDS.length;
-
-        const counts = {
-          available: 0,
-          occupied: 0,
-          reserved: 0,
-          cleaning: 0,
-          transferring: 0,
-        };
-
-        ALL_BEDS.forEach((b) => {
-          if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
-        });
-
-        const inUse = counts.occupied + counts.transferring;
-        const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
-
-        document.getElementById("overallTotalBeds").textContent = totalBeds;
-        document.getElementById("overallOccupiedBeds").textContent = inUse;
-        document.getElementById("overallOccupancyPercent").textContent = pct;
-
-        document.getElementById("countAvailable").textContent = counts.available;
-        document.getElementById("countOccupied").textContent = counts.occupied;
-        document.getElementById("countReserved").textContent = counts.reserved;
-        document.getElementById("countCleaning").textContent = counts.cleaning;
-        document.getElementById("countTransferring").textContent = counts.transferring;
-
-        const wardStats = {};
-        ALL_BEDS.forEach((b) => {
-          const wid = b.ward_id;
-          if (!wardStats[wid]) {
-            wardStats[wid] = {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          }
-          wardStats[wid].total++;
-          if (wardStats[wid][b.bed_status] !== undefined) {
-            wardStats[wid][b.bed_status]++;
-          }
-        });
-
-        ["1", "2", "3"].forEach((wid) => {
-          const s =
-            wardStats[wid] || {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          document.getElementById(`ward-${wid}-total`).textContent = s.total;
-          document.getElementById(`ward-${wid}-inuse`).textContent =
-            s.occupied + s.transferring;
-          document.getElementById(`ward-${wid}-available`).textContent = s.available;
-        });
-      }
-
-      async function loadBedInfo(bedNumber) {
-        try {
-          const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
-          if (!res.ok) return;
-          const data = await res.json();
-
-          const box = document.getElementById("bedInfoBox");
-          const content = document.getElementById("bedInfoContent");
-
-          box.style.display = "block";
-          content.innerHTML = `
-            <strong>Bed number:</strong> ${data.bed_number}<br>
-            <strong>Status:</strong> ${data.bed_status}<br>
-            <strong>Type:</strong> ${data.bed_type}<br>
-            <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
-            <strong>Patient assigned:</strong> ${data.patient_id ?? "None"}
-          `;
-        } catch (err) {
-          console.error("Error loading bed info:", err);
-        }
-      }
-
-      async function loadPatientInfo(bedNumber) {
-        const box = document.getElementById("patientInfo");
-
-        try {
-          const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
-          if (!res.ok) {
-            box.style.display = "none";
-            return;
-          }
-
-          const d = await res.json();
-
-          document.getElementById("pi_id").textContent = d.patient_id ?? "None";
-          document.getElementById("pi_name").textContent = d.first_name
-            ? `${d.first_name} ${d.last_name}`
-            : "No patient assigned";
-          document.getElementById("pi_status").textContent =
-            d.admission_status ?? "N/A";
-          document.getElementById("pi_bed_status").textContent = d.bed_status;
-          document.getElementById("pi_bed_type").textContent = d.bed_type;
-          document.getElementById("pi_ward").textContent = d.ward_name;
-
-          box.style.display = "block";
-        } catch (err) {
-          console.error("Error loading patient info:", err);
-          box.style.display = "none";
-        }
-      }
-
-      async function updateBed() {
-        const bedNumber = document.getElementById("bedSelect").value;
-        const new_status = document.getElementById("statusSelect").value;
-        const patientIdInput = document.getElementById("patientIdInput");
-
-        if (!bedNumber) {
-          alert("Please select a bed first.");
-          return;
-        }
-
-        let patient_id = null;
-
-        if (new_status === "available") {
-          patient_id = null;
-          if (patientIdInput) patientIdInput.value = "";
-        } else if (new_status === "occupied") {
-          const raw = (patientIdInput.value || "").trim();
-          if (!raw) {
-            alert("When setting a bed to 'Occupied', you must enter a patient ID.");
-            return;
-          }
-          const parsed = parseInt(raw, 10);
-          if (Number.isNaN(parsed) || parsed <= 0) {
-            alert("Patient ID must be a positive number.");
-            return;
-          }
-          patient_id = parsed;
-        } else {
-          const raw = (patientIdInput.value || "").trim();
-          patient_id = raw ? parseInt(raw, 10) : null;
-        }
-
-        try {
-          const res = await fetch(`${API_BASE}/beds/assign`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bed_number: bedNumber,
-              bed_status: new_status,
-              patient_id: patient_id,
-            }),
-          });
-
-          const text = await res.text();
-          if (!res.ok) {
-            alert(text || "Error updating bed");
-            return;
-          }
-
-          alert("Bed updated successfully");
-          await loadBeds();
-          loadBedInfo(bedNumber);
-          loadPatientInfo(bedNumber);
-        } catch (err) {
-          console.error("Error updating bed:", err);
-          alert("Failed to update bed.");
-        }
-      }
-
-      window.addEventListener("load", () => {
-        setToday();
-        loadBeds();
-      });
-    </script>
-
-    <!-- === FIREBASE USER DISPLAY === -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
-        authDomain: "sqldatabasetest-473020.firebaseapp.com",
-        projectId: "sqldatabasetest-473020",
-        storageBucket: "sqldatabasetest-473020.appspot.com",
-        messagingSenderId: "725327609427",
-        appId: "1:725327609427:web:989af1506e170afc0650a6",
-        measurementId: "G-WCZ3JSGH71"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          window.location.href = "../index.html";
-          return;
-        }
-
-        const userRef = doc(db, "users", user.uid);
-        const snap = await getDoc(userRef);
-
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-
-        document.getElementById("userName").textContent = data.fullName;
-        document.getElementById("userRole").textContent = data.role;
-
-        const initials = data.fullName
-          .split(" ")
-          .map((n) => n[0])
-          .join("");
-
-        document.getElementById("userInitials").textContent = initials;
-      });
-    </script>
   </body>
 </html>
