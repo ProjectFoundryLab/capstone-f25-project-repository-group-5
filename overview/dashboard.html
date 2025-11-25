@@ -392,45 +392,56 @@ select.addEventListener("change", (e) => {
       }
 
 async function updateBed() {
-  const bedNumber = document.getElementById("bedSelect").value;
-  const new_status = document.getElementById("statusSelect").value;
-  const patientIdInput = document.getElementById("patientIdInput");
+  const bedSelect = document.getElementById("bedSelect");
+  const bedNumber = bedSelect.value;
+  const status = document.getElementById("statusSelect").value;
+  const patientInput = document.getElementById("patientIdInput").value.trim();
 
-  const bedObj = ALL_BEDS.find(b => b.bed_number == bedNumber);
-
-  if (!bedObj) {
-    alert("Could not find matching bed data.");
+  if (!bedNumber) {
+    alert("Please select a bed.");
     return;
   }
 
   let patient_id = null;
 
-  if (new_status === "occupied") {
-    const raw = (patientIdInput.value || "").trim();
-    if (!raw) return alert("Enter patient ID for occupied beds.");
-    patient_id = parseInt(raw, 10);
+  if (status === "occupied") {
+    // Must have a patient
+    if (!patientInput || isNaN(patientInput)) {
+      alert("Enter a valid patient ID.");
+      return;
+    }
+    patient_id = parseInt(patientInput);
   }
 
-  const res = await fetch(`${API_BASE}/beds/update`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      bed_id: bedObj.bed_id,
-      bed_status: new_status,
-      patient_id: patient_id,
-    }),
-  });
+  const body = {
+    bed_number: bedNumber,
+    bed_status: status,
+    patient_id: patient_id
+  };
 
-  const text = await res.text();
-  if (!res.ok) {
-    alert(text || "Error updating bed");
-    return;
+  try {
+    const res = await fetch(`${API_BASE}/beds/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const text = await res.text();
+
+    if (!res.ok) {
+      alert(text);
+      console.error(text);
+      return;
+    }
+
+    alert("Bed updated successfully!");
+    loadBeds();      // refresh table
+    loadBedInfo(bedNumber);  // refresh details panel
+
+  } catch (err) {
+    console.error("Update error:", err);
+    alert("Error updating bed.");
   }
-
-  alert("Bed updated successfully");
-  loadBeds();
-  loadBedInfo(bedNumber);
-  loadPatientInfo(bedNumber);
 }
 
 
