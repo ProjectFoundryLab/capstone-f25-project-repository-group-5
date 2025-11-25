@@ -1,8 +1,4 @@
-
-
-////////////////////////////////////////////////////////////////////////////////
 // --- Hospital Cloud Run Backend (MySQL + GCS CSV + Nurse Dashboard) ---
-////////////////////////////////////////////////////////////////////////////////
 
 const express = require("express");
 const { Storage } = require("@google-cloud/storage");
@@ -17,11 +13,9 @@ app.use(cors());
 
 const storage = new Storage();
 
-//
 // ------------------------------
 //  GLOBAL NULL SANITIZER
 // ------------------------------
-//
 function toNull(v) {
   if (v === undefined || v === null) return null;
   if (typeof v === "string" && v.trim() === "") return null;
@@ -29,11 +23,9 @@ function toNull(v) {
   return v;
 }
 
-//
 // ------------------------------
-//  INT SANITIZER
+//  INT SANITIZER (blank → NULL)
 // ------------------------------
-//
 function toIntOrNull(v) {
   v = toNull(v);
   if (v === null) return null;
@@ -41,11 +33,9 @@ function toIntOrNull(v) {
   return isNaN(n) ? null : n;
 }
 
-//
 // ------------------------------
-//  DATE NORMALIZER
+//  DATE NORMALIZER (MM/DD/YYYY → YYYY-MM-DD)
 // ------------------------------
-//
 function fixDate(v) {
   if (!v || v.trim() === "") return null;
   if (v.includes("/")) {
@@ -55,11 +45,7 @@ function fixDate(v) {
   return v;
 }
 
-//
-// ------------------------------
-//  ENV
-// ------------------------------
-//
+// --- ENV HANDLING ---
 const CLOUD_SQL_CONNECTION_NAME = process.env.CLOUD_SQL_CONNECTION_NAME;
 
 if (!process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
@@ -72,12 +58,10 @@ const DB_PASS = process.env.DB_PASS;
 const DB_NAME = process.env.DB_NAME;
 
 console.log(`🔌 Using DB user: ${DB_USER}`);
+console.log(`🔌 Using DB name: ${DB_NAME}`);
+console.log(`🔌 Using Cloud SQL instance: ${CLOUD_SQL_CONNECTION_NAME}`);
 
-//
-// ------------------------------
-//  MySQL HELPER
-// ------------------------------
-//
+// --- MySQL connection helper ---
 async function getDbConnection() {
   return mysql.createConnection({
     user: DB_USER,
@@ -87,17 +71,19 @@ async function getDbConnection() {
   });
 }
 
-//
 // ===================================================================
-//  GCS → MySQL CSV processing
+//  GCS → MySQL CSV processing (Eventarc Trigger)
 // ===================================================================
-//
 async function processCsv(bucketName, fileName) {
   const bucket = storage.bucket(bucketName);
   const file = bucket.file(fileName);
   const [contents] = await file.download();
   const text = contents.toString("utf8");
-  const records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+  const records = parse(text, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  });
 
   console.log(`Processing ${records.length} records from ${fileName}`);
 
@@ -105,9 +91,9 @@ async function processCsv(bucketName, fileName) {
   try {
     await conn.beginTransaction();
 
-    //
+    // ------------------------------
     // PATIENTS
-    //
+    // ------------------------------
     if (records[0]?.patient_id && records[0]?.first_name !== undefined) {
       console.log("Detected patients.csv");
       for (const r of records) {
@@ -141,9 +127,9 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
+    // ------------------------------
     // WARDS
-    //
+    // ------------------------------
     else if (records[0]?.ward_id && records[0]?.name !== undefined) {
       console.log("Detected wards.csv");
       for (const r of records) {
@@ -168,9 +154,9 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
+    // ------------------------------
     // BEDS
-    //
+    // ------------------------------
     else if (records[0]?.bed_id && records[0]?.bed_number !== undefined) {
       console.log("Detected beds.csv");
       for (const r of records) {
@@ -195,13 +181,23 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
-    // ADMISSIONS
-    //
-    else if (records[0]?.admission_id) {
+    // ------------------------------
+    // ADMISSIONS (new schema)
+// ------------------------------
+    else if (
+      records[0]?.admission_id &&
+      (records[0]?.admission_date !== undefined ||
+        records[0]?.admission_time !== undefined)
+    ) {
       console.log("Detected admissions.csv");
 
       for (const r of records) {
+        const admissionDate = fixDate(r.admission_date);
+        const dischargeDate = fixDate(r.discharge_date);
+
+        const admissionTime = toNull(r.admission_time);
+        const dischargeTime = toNull(r.discharge_time);
+
         await conn.query(
           `INSERT INTO admissions (
             admission_id, patient_id, ward_id, bed_id,
@@ -212,26 +208,26 @@ async function processCsv(bucketName, fileName) {
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
-            patient_id = VALUES(patient_id),
-            ward_id = VALUES(ward_id),
-            bed_id = VALUES(bed_id),
-            admission_date = VALUES(admission_date),
-            admission_time = VALUES(admission_time),
-            discharge_date = VALUES(discharge_date),
-            discharge_time = VALUES(discharge_time),
-            admission_reason = VALUES(admission_reason),
-            disposition = VALUES(disposition),
-            transfer_from = VALUES(transfer_from),
-            transfer_to = VALUES(transfer_to)`,
+            patient_id      = VALUES(patient_id),
+            ward_id         = VALUES(ward_id),
+            bed_id          = VALUES(bed_id),
+            admission_date  = VALUES(admission_date),
+            admission_time  = VALUES(admission_time),
+            discharge_date  = VALUES(discharge_date),
+            discharge_time  = VALUES(discharge_time),
+            admission_reason= VALUES(admission_reason),
+            disposition     = VALUES(disposition),
+            transfer_from   = VALUES(transfer_from),
+            transfer_to     = VALUES(transfer_to)`,
           [
             toIntOrNull(r.admission_id),
             toIntOrNull(r.patient_id),
             toIntOrNull(r.ward_id),
             toIntOrNull(r.bed_id),
-            fixDate(r.admission_date),
-            toNull(r.admission_time),
-            fixDate(r.discharge_date),
-            toNull(r.discharge_time),
+            admissionDate,
+            admissionTime,
+            dischargeDate,
+            dischargeTime,
             toNull(r.admission_reason),
             toNull(r.disposition),
             toIntOrNull(r.transfer_from),
@@ -241,10 +237,10 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
+    // ------------------------------
     // FORECASTS
-    //
-    else if (records[0]?.forecast_id) {
+    // ------------------------------
+    else if (records[0]?.forecast_id && records[0]?.ward_id !== undefined) {
       console.log("Detected forecasts.csv");
       for (const r of records) {
         await conn.query(
@@ -273,9 +269,9 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
+    // ------------------------------
     // ROLES
-    //
+    // ------------------------------
     else if (records[0]?.role_id) {
       console.log("Detected roles.csv");
       for (const r of records) {
@@ -288,9 +284,9 @@ async function processCsv(bucketName, fileName) {
       }
     }
 
-    //
+    // ------------------------------
     // USERS
-    //
+    // ------------------------------
     else if (records[0]?.user_id) {
       console.log("Detected users.csv");
       for (const r of records) {
@@ -317,7 +313,7 @@ async function processCsv(bucketName, fileName) {
     }
 
     await conn.commit();
-    console.log("CSV data imported successfully");
+    console.log("✅ CSV data imported successfully");
   } catch (err) {
     await conn.rollback();
     console.error("DB error during CSV import:", err);
@@ -327,11 +323,9 @@ async function processCsv(bucketName, fileName) {
   }
 }
 
-//
-// ===================================================================
+// ================================================================
 // Eventarc trigger
-// ===================================================================
-//
+// ================================================================
 app.post("/", async (req, res) => {
   try {
     let payload = req.body;
@@ -354,15 +348,9 @@ app.post("/", async (req, res) => {
   }
 });
 
-//
-// ===================================================================
-// RESTORED Nurse Frontend API
-// ===================================================================
-//
-
-// -------------------
-// GET ALL BEDS
-// -------------------
+// ================================================================
+// Nurse Frontend API
+// ================================================================
 app.get("/beds", async (req, res) => {
   try {
     const conn = await getDbConnection();
@@ -375,71 +363,83 @@ app.get("/beds", async (req, res) => {
   }
 });
 
-// -------------------------
-// UPDATED BED UPDATE ROUTE
-// -------------------------
-app.post("/beds/update", async (req, res) => {
-  let { bed_id, bed_status, patient_id } = req.body;
+// ================================================================
+// Update bed + update admissions + clear/set patient assignment
+// (used by dashboard.html → POST /beds/assign)
+// ================================================================
+app.post("/beds/assign", async (req, res) => {
+  const { bed_number, bed_status, patient_id } = req.body;
 
-  if (!bed_id) {
-    return res.status(400).send("Missing bed_id");
+  if (!bed_number) {
+    return res.status(400).send("Missing bed_number");
   }
-
-  const status = (bed_status || "").toLowerCase();
 
   try {
     const conn = await getDbConnection();
 
-    // Validate bed exists
-    const [beds] = await conn.query("SELECT bed_id FROM beds WHERE bed_id = ?", [bed_id]);
+    // 1) Find bed_id from bed_number
+    const [beds] = await conn.query(
+      "SELECT bed_id FROM beds WHERE bed_number = ?",
+      [bed_number]
+    );
+
     if (beds.length === 0) {
       await conn.end();
       return res.status(404).send("Bed not found");
     }
 
-    // Decide final patient
-    let finalPatientId = null;
+    const bed_id = beds[0].bed_id;
 
-    if (status === "occupied") {
-      const pid = toIntOrNull(patient_id);
-      if (!pid) {
-        await conn.end();
-        return res.status(400).send("Patient ID required for occupied beds.");
-      }
-
-      // Validate patient exists
-      const [patients] = await conn.query(
-        "SELECT patient_id FROM patients WHERE patient_id = ?",
-        [pid]
-      );
-
-      if (patients.length === 0) {
-        await conn.end();
-        return res.status(400).send("Invalid patient ID.");
-      }
-
-      finalPatientId = pid;
-    } else {
-      finalPatientId = toIntOrNull(patient_id);
-    }
-
-    // Update bed
+    // 2) Update the bed table
     await conn.query(
       "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
-      [status, finalPatientId, bed_id]
+      [bed_status, patient_id ? patient_id : null, bed_id]
     );
 
+    // 3) If bed is set to AVAILABLE → discharge any active admission
+    if (bed_status === "available") {
+      await conn.query(
+        `UPDATE admissions 
+         SET discharge_date = CURDATE(), 
+             discharge_time = CURTIME(),
+             disposition = 'discharged'
+         WHERE bed_id = ? AND discharge_date IS NULL`,
+        [bed_id]
+      );
+    }
+
+    // 4) If bed is set to OCCUPIED → create or update an admission
+    if (bed_status === "occupied" && patient_id) {
+      await conn.query(
+        `INSERT INTO admissions (
+           patient_id, ward_id, bed_id,
+           admission_date, admission_time,
+           admission_reason, disposition
+         )
+         SELECT ?, w.ward_id, b.bed_id,
+                CURDATE(), CURTIME(),
+                'Hospitalized', 'admitted'
+         FROM beds b 
+         JOIN wards w ON b.ward_id = w.ward_id
+         WHERE b.bed_id = ?
+         ON DUPLICATE KEY UPDATE 
+           discharge_date = NULL,
+           discharge_time = NULL`,
+        [patient_id, bed_id]
+      );
+    }
+
     await conn.end();
-    res.send("Bed updated successfully");
+    res.send("Bed + admission updated successfully");
   } catch (err) {
-    console.error("Error in /beds/update:", err);
-    res.status(500).send("Server error updating bed");
+    console.error("Error in /beds/assign:", err);
+    res.status(500).send("Server error updating bed + admissions");
   }
 });
 
-// -------------------
-// GET BED BY NUMBER
-// -------------------
+// ================================================================
+// Single-bed details (used by dashboard.html)
+// ================================================================
 app.get("/beds/:bedNumber", async (req, res) => {
   try {
     const conn = await getDbConnection();
@@ -458,13 +458,14 @@ app.get("/beds/:bedNumber", async (req, res) => {
     if (rows.length === 0) return res.status(404).send("Bed not found");
     res.json(rows[0]);
   } catch (err) {
+    console.error("Error fetching single bed:", err);
     res.status(500).send("Error fetching bed");
   }
 });
 
-// -------------------
-// GET WARDS
-// -------------------
+// ================================================================
+// Wards overview
+// ================================================================
 app.get("/wards", async (req, res) => {
   try {
     const conn = await getDbConnection();
@@ -479,13 +480,14 @@ app.get("/wards", async (req, res) => {
     await conn.end();
     res.json(rows);
   } catch (err) {
+    console.error("Error fetching wards:", err);
     res.status(500).send("Error fetching wards");
   }
 });
 
-// -------------------
-// RECENT ADMISSIONS
-// -------------------
+// ================================================================
+// LIVE FEED — Latest Admissions
+// ================================================================
 app.get("/admissions/latest", async (req, res) => {
   try {
     const conn = await getDbConnection();
@@ -508,8 +510,8 @@ app.get("/admissions/latest", async (req, res) => {
 
       FROM admissions a
       LEFT JOIN patients p ON a.patient_id = p.patient_id
-      LEFT JOIN wards w	ON a.ward_id = w.ward_id
-      LEFT JOIN beds b	ON a.bed_id = b.bed_id
+      LEFT JOIN wards w ON a.ward_id = w.ward_id
+      LEFT JOIN beds b ON a.bed_id = b.bed_id
       ORDER BY a.admission_time DESC
       LIMIT 25;
     `);
@@ -522,19 +524,40 @@ app.get("/admissions/latest", async (req, res) => {
   }
 });
 
-//
-// -------------------
-// HEALTH CHECK
-// -------------------
+// ================================================================
+// GET ALL PATIENTS (patients page)
+// ================================================================
+app.get("/patients", async (req, res) => {
+  try {
+    const conn = await getDbConnection();
+    const [rows] = await conn.query(`
+      SELECT 
+        patient_id,
+        first_name,
+        last_name,
+        date_of_birth,
+        gender,
+        medical_record_number,
+        admission_status,
+        priority_level,
+        admit_reason
+      FROM patients
+      ORDER BY patient_id ASC
+    `);
+    await conn.end();
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching patients:", err);
+    res.status(500).send("Error fetching patients");
+  }
+});
+
+// ================================================================
+// Health check
+// ================================================================
 app.get("/health", (req, res) => res.send("ok"));
 
-//
-// -------------------
-// START SERVER
-// -------------------
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`🚑 Server listening on port ${port}`);
 });
-
-////////////////////////////////////////////////////////////////////////////////
