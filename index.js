@@ -377,7 +377,7 @@ app.post("/beds/assign", async (req, res) => {
   try {
     const conn = await getDbConnection();
 
-    // Step 1: Find bed_id from bed_number
+    // Step 1: Convert bed_number → bed_id
     const [beds] = await conn.query(
       "SELECT bed_id FROM beds WHERE bed_number = ?",
       [bed_number]
@@ -390,17 +390,17 @@ app.post("/beds/assign", async (req, res) => {
 
     const bed_id = beds[0].bed_id;
 
-    // Step 2: Update the bed table
+    // Step 2: Update the bed record
     await conn.query(
       "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
       [bed_status, patient_id ? patient_id : null, bed_id]
     );
 
-    // Step 3: If bed is set to AVAILABLE → discharge any active admission
+    // Step 3: If setting bed to AVAILABLE → discharge active admission
     if (bed_status === "available") {
       await conn.query(
         `UPDATE admissions 
-         SET discharge_date = CURDATE(), 
+         SET discharge_date = CURDATE(),
              discharge_time = CURTIME(),
              disposition = 'discharged'
          WHERE bed_id = ? AND discharge_date IS NULL`,
@@ -408,7 +408,7 @@ app.post("/beds/assign", async (req, res) => {
       );
     }
 
-    // Step 4: If bed is set to OCCUPIED → create or update an admission
+    // Step 4: If setting bed to OCCUPIED → create an admission
     if (bed_status === "occupied" && patient_id) {
       await conn.query(
         `INSERT INTO admissions (
@@ -419,10 +419,10 @@ app.post("/beds/assign", async (req, res) => {
          SELECT ?, w.ward_id, b.bed_id,
                 CURDATE(), CURTIME(),
                 'Hospitalized', 'admitted'
-         FROM beds b 
+         FROM beds b
          JOIN wards w ON b.ward_id = w.ward_id
          WHERE b.bed_id = ?
-         ON DUPLICATE KEY UPDATE 
+         ON DUPLICATE KEY UPDATE
            discharge_date = NULL,
            discharge_time = NULL`,
         [patient_id, bed_id]
@@ -430,12 +430,13 @@ app.post("/beds/assign", async (req, res) => {
     }
 
     await conn.end();
-    res.send("Bed + admission updated successfully");
+    res.send("Bed and admission updated successfully");
   } catch (err) {
     console.error("Error in /beds/assign:", err);
-    res.status(500).send("Server error updating bed + admissions");
+    res.status(500).send("Server error updating bed");
   }
 });
+
 
 
 
