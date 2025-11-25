@@ -242,36 +242,39 @@
           const select = document.getElementById("bedSelect");
           select.innerHTML = "";
 
-          ALL_BEDS.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.bed_id;
-            opt.dataset.bedNumber = b.bed_number;
-            opt.dataset.wardId = b.ward_id;
-            opt.textContent = `Bed ${b.bed_number} (${
-              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-            })`;
-            select.appendChild(opt);
-          });
+         ALL_BEDS.forEach((b) => {
+  const opt = document.createElement("option");
+  opt.value = b.bed_id;                   // HTML value = bed_id
+  opt.dataset.bedNumber = b.bed_number;   // dataset carries the real bed number
+  opt.dataset.wardId = b.ward_id;
 
-          if (ALL_BEDS.length > 0) {
-            const firstBedNumber = ALL_BEDS[0].bed_number;
-            loadBedInfo(firstBedNumber);
-            loadPatientInfo(firstBedNumber);
-          }
+  opt.textContent = `Bed ${b.bed_number} (${
+    WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
+  })`;
 
-          updateOverviewCards();
+  select.appendChild(opt);
+});
 
-          select.addEventListener("change", (e) => {
-            const bedNumber = e.target.value;
-            if (bedNumber) {
-              loadBedInfo(bedNumber);
-              loadPatientInfo(bedNumber);
-            }
-          });
-        } catch (err) {
-          console.error("Error loading beds:", err);
-        }
-      }
+// Load first bed's info
+if (ALL_BEDS.length > 0) {
+  const firstNumber = ALL_BEDS[0].bed_number;
+  loadBedInfo(firstNumber);
+  loadPatientInfo(firstNumber);
+}
+
+updateOverviewCards();
+
+// IMPORTANT FIX — use bed_number, not bed_id
+select.addEventListener("change", (e) => {
+  const opt = e.target.selectedOptions[0];
+  const bedNumber = opt.dataset.bedNumber;  // correct field
+
+  if (bedNumber) {
+    loadBedInfo(bedNumber);
+    loadPatientInfo(bedNumber);
+  }
+});
+
 
       function updateOverviewCards() {
         const totalBeds = ALL_BEDS.length;
