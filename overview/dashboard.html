@@ -420,14 +420,17 @@
   }
 
   try {
-    const res = await fetch(`${API_BASE}/beds/update`, {
+    const res = await fetch(`${API_BASE}/beds/assign`, {
+
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber,
-        bed_status: new_status,
-        patient_id: patient_id
-      })
+      
+  bed_number: bedNumber,
+  bed_status: new_status,
+  patient_id: patient_id
+})
+
     });
 
     const msg = await res.text();
