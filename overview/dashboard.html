@@ -396,55 +396,58 @@
       }
 
       async function updateBed() {
-  const bedNumber = document.getElementById("bedSelect").value;
+  const selected = document.getElementById("bedSelect").value;
   const new_status = document.getElementById("statusSelect").value;
-  const patientIdInput = document.getElementById("patientIdInput");
+  const patient_id_raw = document.getElementById("patientIdInput").value.trim();
 
-  if (!bedNumber) {
+  if (!selected) {
     alert("Please select a bed first.");
     return;
   }
 
-  // Decide patient_id value
+  // Extract clean bed_number (ex: "A101")
+  const bed_number = selected.split(" ")[0];
+
   let patient_id = null;
 
-  if (new_status === "available") {
-    patient_id = null;
-  } else if (new_status === "occupied") {
-    const raw = patientIdInput.value.trim();
-    if (!raw) {
-      alert("Enter patient ID!");
+  if (new_status === "occupied") {
+    if (!patient_id_raw) {
+      alert("You must enter a patient ID for an occupied bed.");
       return;
     }
-    patient_id = parseInt(raw);
+    patient_id = parseInt(patient_id_raw, 10);
   }
+
+  const payload = {
+    bed_number,
+    bed_status: new_status,
+    patient_id
+  };
+
+  console.log("Sending:", payload);
 
   try {
     const res = await fetch(`${API_BASE}/beds/assign`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    bed_number: selectedBedNumber,
-    bed_status: new_status,
-    patient_id: patient_id
-  })
-});
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
+    const text = await res.text();
 
-    const msg = await res.text();
     if (!res.ok) {
-      alert(msg);
+      alert(text);
       return;
     }
 
-    alert("Bed updated!");
+    alert("Bed updated successfully!");
     loadBeds();
-    loadBedInfo(bedNumber);
-    loadPatientInfo(bedNumber);
+    loadBedInfo(bed_number);
+    loadPatientInfo(bed_number);
 
   } catch (err) {
-    alert("Error updating bed");
     console.error(err);
+    alert("Failed to update bed.");
   }
 }
 
