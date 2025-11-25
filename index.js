@@ -366,20 +366,71 @@ app.get("/beds", async (req, res) => {
 });
 
 
-// ===================================================================
-// SIMPLE BED UPDATE ENDPOINT used by dashboard and manage-beds pages
-// ===================================================================
+// ================================================================
+// Update bed (by bed_id) + validate patient if occupied
+// ================================================================
 app.post("/beds/update", async (req, res) => {
-  const { bed_id, bed_status, patient_id } = req.body;
+  let { bed_id, bed_status, patient_id } = req.body;
 
-  if (!bed_id) return res.status(400).send("Missing bed_id");
+  if (!bed_id) {
+    return res.status(400).send("Missing bed_id");
+  }
+
+  // Normalize
+  const status = (bed_status || "").toLowerCase();
 
   try {
     const conn = await getDbConnection();
 
+    // 1) Make sure the bed exists
+    const [beds] = await conn.query(
+      "SELECT bed_id FROM beds WHERE bed_id = ?",
+      [bed_id]
+    );
+
+    if (beds.length === 0) {
+      await conn.end();
+      return res.status(404).send("Bed not found");
+    }
+
+    // 2) Decide what patient_id we will actually store
+    let finalPatientId = null;
+
+    if (status === "available") {
+      // When bed is available → always clear patient
+      finalPatientId = null;
+    } else if (status === "occupied") {
+      // Must have a valid patient_id
+      const pid = toIntOrNull(patient_id);
+      if (!pid) {
+        await conn.end();
+        return res
+          .status(400)
+          .send("Patient ID is required and must be a valid number for occupied beds.");
+      }
+
+      // Validate patient exists
+      const [patients] = await conn.query(
+        "SELECT patient_id FROM patients WHERE patient_id = ?",
+        [pid]
+      );
+      if (patients.length === 0) {
+        await conn.end();
+        return res
+          .status(400)
+          .send("No patient found with that ID.");
+      }
+
+      finalPatientId = pid;
+    } else {
+      // reserved / cleaning / transferring – allow optional patient
+      finalPatientId = toIntOrNull(patient_id);
+    }
+
+    // 3) Update the beds table
     await conn.query(
       "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
-      [bed_status, patient_id || null, bed_id]
+      [status, finalPatientId, bed_id]
     );
 
     await conn.end();
@@ -389,6 +440,7 @@ app.post("/beds/update", async (req, res) => {
     res.status(500).send("Server error updating bed");
   }
 });
+
 
 
 
