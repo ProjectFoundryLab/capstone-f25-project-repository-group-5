@@ -360,32 +360,27 @@ app.get("/beds", async (req, res) => {
     await conn.end();
     res.json(rows);
   } catch (err) {
-    console.error("Error loading beds:", err);
     res.status(500).send("Error fetching beds");
   }
 });
 
-
 // ================================================================
-// Update bed (by bed_id) + validate patient if occupied
+// NEW: Update bed + update admissions + clear/set patient assignment
 // ================================================================
-app.post("/beds/update", async (req, res) => {
-  let { bed_id, bed_status, patient_id } = req.body;
+app.post("/beds/assign", async (req, res) => {
+  const { bed_number, bed_status, patient_id } = req.body;
 
-  if (!bed_id) {
-    return res.status(400).send("Missing bed_id");
+  if (!bed_number) {
+    return res.status(400).send("Missing bed_number");
   }
-
-  // Normalize
-  const status = (bed_status || "").toLowerCase();
 
   try {
     const conn = await getDbConnection();
 
-    // 1) Make sure the bed exists
+    // Step 1: Find bed_id from bed_number
     const [beds] = await conn.query(
-      "SELECT bed_id FROM beds WHERE bed_id = ?",
-      [bed_id]
+      "SELECT bed_id FROM beds WHERE bed_number = ?",
+      [bed_number]
     );
 
     if (beds.length === 0) {
@@ -393,56 +388,54 @@ app.post("/beds/update", async (req, res) => {
       return res.status(404).send("Bed not found");
     }
 
-    // 2) Decide what patient_id we will actually store
-    let finalPatientId = null;
+    const bed_id = beds[0].bed_id;
 
-    if (status === "available") {
-      // When bed is available → always clear patient
-      finalPatientId = null;
-    } else if (status === "occupied") {
-      // Must have a valid patient_id
-      const pid = toIntOrNull(patient_id);
-      if (!pid) {
-        await conn.end();
-        return res
-          .status(400)
-          .send("Patient ID is required and must be a valid number for occupied beds.");
-      }
-
-      // Validate patient exists
-      const [patients] = await conn.query(
-        "SELECT patient_id FROM patients WHERE patient_id = ?",
-        [pid]
-      );
-      if (patients.length === 0) {
-        await conn.end();
-        return res
-          .status(400)
-          .send("No patient found with that ID.");
-      }
-
-      finalPatientId = pid;
-    } else {
-      // reserved / cleaning / transferring – allow optional patient
-      finalPatientId = toIntOrNull(patient_id);
-    }
-
-    // 3) Update the beds table
+    // Step 2: Update the bed table
     await conn.query(
       "UPDATE beds SET bed_status = ?, patient_id = ? WHERE bed_id = ?",
-      [status, finalPatientId, bed_id]
+      [bed_status, patient_id ? patient_id : null, bed_id]
     );
 
+    // Step 3: If bed is set to AVAILABLE → discharge any active admission
+    if (bed_status === "available") {
+      await conn.query(
+        `UPDATE admissions 
+         SET discharge_date = CURDATE(), 
+             discharge_time = CURTIME(),
+             disposition = 'discharged'
+         WHERE bed_id = ? AND discharge_date IS NULL`,
+        [bed_id]
+      );
+    }
+
+    // Step 4: If bed is set to OCCUPIED → create or update an admission
+    if (bed_status === "occupied" && patient_id) {
+      await conn.query(
+        `INSERT INTO admissions (
+           patient_id, ward_id, bed_id,
+           admission_date, admission_time,
+           admission_reason, disposition
+         )
+         SELECT ?, w.ward_id, b.bed_id,
+                CURDATE(), CURTIME(),
+                'Hospitalized', 'admitted'
+         FROM beds b 
+         JOIN wards w ON b.ward_id = w.ward_id
+         WHERE b.bed_id = ?
+         ON DUPLICATE KEY UPDATE 
+           discharge_date = NULL,
+           discharge_time = NULL`,
+        [patient_id, bed_id]
+      );
+    }
+
     await conn.end();
-    res.send("Bed updated successfully");
+    res.send("Bed + admission updated successfully");
   } catch (err) {
-    console.error("Error in /beds/update:", err);
-    res.status(500).send("Server error updating bed");
+    console.error("Error in /beds/assign:", err);
+    res.status(500).send("Server error updating bed + admissions");
   }
 });
-
-
-
 
 
 
