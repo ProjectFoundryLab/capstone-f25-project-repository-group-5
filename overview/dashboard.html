@@ -405,7 +405,7 @@
     return;
   }
 
-  // Extract clean bed_number (ex: "A101")
+  // Extract "A101" cleanly
   const bed_number = selected.split(" ")[0];
 
   let patient_id = null;
@@ -418,23 +418,18 @@
     patient_id = parseInt(patient_id_raw, 10);
   }
 
-  const payload = {
-    bed_number,
-    bed_status: new_status,
-    patient_id
-  };
-
-  console.log("Sending:", payload);
-
   try {
-    const res = await fetch(`${API_BASE}/beds/assign`, {
+    const res = await fetch(`${API_BASE}/beds/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        bed_number,
+        bed_status: new_status,
+        patient_id
+      }),
     });
 
     const text = await res.text();
-
     if (!res.ok) {
       alert(text);
       return;
@@ -447,9 +442,10 @@
 
   } catch (err) {
     console.error(err);
-    alert("Failed to update bed.");
+    alert("Error updating bed.");
   }
 }
+
 
 
       window.addEventListener("load", () => {
