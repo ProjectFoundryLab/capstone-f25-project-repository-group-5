@@ -396,54 +396,63 @@
       }
 
       async function updateBed() {
-  const selected = document.getElementById("bedSelect").value;
-  const new_status = document.getElementById("statusSelect").value;
-  const patient_id_raw = document.getElementById("patientIdInput").value.trim();
+  const selectedValue = document.getElementById("bedSelect").value;
 
-  if (!selected) {
+  if (!selectedValue) {
     alert("Please select a bed first.");
     return;
   }
 
-  // Extract "A101" cleanly
-  const bed_number = selected.split("—")[0].trim();
-
+  // selectedValue is like "A101 — reserved"
+  const bed_number = selectedValue.split(" ")[0];  // "A101"
+  const new_status = document.getElementById("statusSelect").value;
+  const rawPatient = document.getElementById("patientIdInput").value.trim();
 
   let patient_id = null;
 
   if (new_status === "occupied") {
-    if (!patient_id_raw) {
-      alert("You must enter a patient ID for an occupied bed.");
+    if (!rawPatient) {
+      alert("Enter a patient ID when setting a bed to occupied.");
       return;
     }
-    patient_id = parseInt(patient_id_raw, 10);
+    patient_id = parseInt(rawPatient, 10);
+    if (isNaN(patient_id)) {
+      alert("Invalid patient ID.");
+      return;
+    }
   }
 
+  const payload = {
+    bed_number: bed_number,
+    bed_status: new_status,
+    patient_id: patient_id
+  };
+
+  console.log("Sending to backend:", payload);
+
   try {
-    const res = await fetch(`${API_BASE}/beds/update`, {
+    const res = await fetch(`${API_BASE}/beds/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bed_number,
-        bed_status: new_status,
-        patient_id
-      }),
+      body: JSON.stringify(payload),
     });
 
     const text = await res.text();
     if (!res.ok) {
+      console.error("Server returned error:", text);
       alert(text);
       return;
     }
 
     alert("Bed updated successfully!");
+
     loadBeds();
     loadBedInfo(bed_number);
     loadPatientInfo(bed_number);
 
   } catch (err) {
-    console.error(err);
-    alert("Error updating bed.");
+    console.error("Network/update error:", err);
+    alert("Failed to update bed.");
   }
 }
 
