@@ -406,7 +406,8 @@
   }
 
   // Extract "A101" cleanly
-  const bed_number = selected.split(" ")[0];
+  const bed_number = selected.split("—")[0].trim();
+
 
   let patient_id = null;
 
