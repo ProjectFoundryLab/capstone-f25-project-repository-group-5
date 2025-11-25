@@ -242,41 +242,42 @@
           const select = document.getElementById("bedSelect");
           select.innerHTML = "";
 
-         ALL_BEDS.forEach((b) => {
-  const opt = document.createElement("option");
- opt.value = b.bed_number;
-opt.dataset.bedId = b.bed_id;
-opt.dataset.wardId = b.ward_id;
+          ALL_BEDS.forEach((b) => {
+            const opt = document.createElement("option");
+            opt.value = b.bed_number;  // <-- Use bed_number for the value
+            opt.dataset.bedId = b.bed_id;  // <-- Store bed_id in the dataset
+            opt.dataset.wardId = b.ward_id;  // <-- Store ward_id in the dataset
 
-  opt.dataset.wardId = b.ward_id;
+            // Add ward label to the option text
+            opt.textContent = `Bed ${b.bed_number} (${
+              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
+            })`;
 
-  opt.textContent = `Bed ${b.bed_number} (${
-    WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-  })`;
+            select.appendChild(opt);
+          });
 
-  select.appendChild(opt);
-});
+          // Load first bed's info
+          if (ALL_BEDS.length > 0) {
+            const firstNumber = ALL_BEDS[0].bed_number;
+            loadBedInfo(firstNumber);
+            loadPatientInfo(firstNumber);
+          }
 
-// Load first bed's info
-if (ALL_BEDS.length > 0) {
-  const firstNumber = ALL_BEDS[0].bed_number;
-  loadBedInfo(firstNumber);
-  loadPatientInfo(firstNumber);
-}
+          updateOverviewCards();
 
-updateOverviewCards();
+          // IMPORTANT FIX — use bed_number, not bed_id
+          select.addEventListener("change", (e) => {
+            const bedNumber = bedSelect.value;  // correct field
 
-// IMPORTANT FIX — use bed_number, not bed_id
-select.addEventListener("change", (e) => {
-  const opt = e.target.selectedOptions[0];
-  const bedNumber = bedSelect.value;  // correct field
-
-  if (bedNumber) {
-    loadBedInfo(bedNumber);
-    loadPatientInfo(bedNumber);
-  }
-});
-
+            if (bedNumber) {
+              loadBedInfo(bedNumber);
+              loadPatientInfo(bedNumber);
+            }
+          });
+        } catch (err) {
+          console.error("Error loading beds:", err);
+        }
+      }
 
       function updateOverviewCards() {
         const totalBeds = ALL_BEDS.length;
@@ -393,108 +394,62 @@ select.addEventListener("change", (e) => {
         }
       }
 
-async function updateBed() {
-  const bedSelect = document.getElementById("bedSelect");
-  const bedNumber = bedSelect.value;
-  const status = document.getElementById("statusSelect").value;
-  const patientInput = document.getElementById("patientIdInput").value.trim();
+      async function updateBed() {
+        const bedSelect = document.getElementById("bedSelect");
+        const bedNumber = bedSelect.value;
+        const status = document.getElementById("statusSelect").value;
+        const patientInput = document.getElementById("patientIdInput").value.trim();
 
-  if (!bedNumber) {
-    alert("Please select a bed.");
-    return;
-  }
+        if (!bedNumber) {
+          alert("Please select a bed.");
+          return;
+        }
 
-  let patient_id = null;
+        let patient_id = null;
 
-  if (status === "occupied") {
-    // Must have a patient
-    if (!patientInput || isNaN(patientInput)) {
-      alert("Enter a valid patient ID.");
-      return;
-    }
-    patient_id = parseInt(patientInput);
-  }
+        if (status === "occupied") {
+          // Must have a patient
+          if (!patientInput || isNaN(patientInput)) {
+            alert("Enter a valid patient ID.");
+            return;
+          }
+          patient_id = parseInt(patientInput);
+        }
 
-  const body = {
-    bed_number: bedNumber,
-    bed_status: status,
-    patient_id: patient_id
-  };
+        const body = {
+          bed_number: bedNumber,
+          bed_status: status,
+          patient_id: patient_id
+        };
 
-  try {
-    const res = await fetch(`${API_BASE}/beds/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+        try {
+          const res = await fetch(`${API_BASE}/beds/assign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
 
-    const text = await res.text();
+          const text = await res.text();
 
-    if (!res.ok) {
-      alert(text);
-      console.error(text);
-      return;
-    }
+          if (!res.ok) {
+            alert(text);
+            console.error(text);
+            return;
+          }
 
-    alert("Bed updated successfully!");
-    loadBeds();      // refresh table
-    loadBedInfo(bedNumber);  // refresh details panel
+          alert("Bed updated successfully!");
+          loadBeds();      // refresh table
+          loadBedInfo(bedNumber);  // refresh details panel
 
-  } catch (err) {
-    console.error("Update error:", err);
-    alert("Error updating bed.");
-  }
-}
-
+        } catch (err) {
+          console.error("Update error:", err);
+          alert("Error updating bed.");
+        }
+      }
 
       window.addEventListener("load", () => {
         setToday();
         loadBeds();
-      });
-    </script>
-
-    <!-- === FIREBASE USER DISPLAY === -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyCCv10iytVHPyRSB4dAotE2UBCRqr2sJ-8",
-        authDomain: "sqldatabasetest-473020.firebaseapp.com",
-        projectId: "sqldatabasetest-473020",
-        storageBucket: "sqldatabasetest-473020.appspot.com",
-        messagingSenderId: "725327609427",
-        appId: "1:725327609427:web:989af1506e170afc0650a6",
-        measurementId: "G-WCZ3JSGH71"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          window.location.href = "../index.html";
-          return;
-        }
-
-        const userRef = doc(db, "users", user.uid);
-        const snap = await getDoc(userRef);
-
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-
-        document.getElementById("userName").textContent = data.fullName;
-        document.getElementById("userRole").textContent = data.role;
-
-        const initials = data.fullName
-          .split(" ")
-          .map((n) => n[0])
-          .join("");
-
-        document.getElementById("userInitials").textContent = initials;
       });
     </script>
   </body>
