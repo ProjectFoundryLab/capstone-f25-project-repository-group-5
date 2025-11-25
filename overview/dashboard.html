@@ -387,64 +387,48 @@
         }
       }
 
-      async function updateBed() {
-        const bedNumber = document.getElementById("bedSelect").value;
-        const new_status = document.getElementById("statusSelect").value;
-        const patientIdInput = document.getElementById("patientIdInput");
+async function updateBed() {
+  const bedNumber = document.getElementById("bedSelect").value;
+  const new_status = document.getElementById("statusSelect").value;
+  const patientIdInput = document.getElementById("patientIdInput");
 
-        if (!bedNumber) {
-          alert("Please select a bed first.");
-          return;
-        }
+  const bedObj = ALL_BEDS.find(b => b.bed_number == bedNumber);
 
-        let patient_id = null;
+  if (!bedObj) {
+    alert("Could not find matching bed data.");
+    return;
+  }
 
-        if (new_status === "available") {
-          patient_id = null;
-          if (patientIdInput) patientIdInput.value = "";
-        } else if (new_status === "occupied") {
-          const raw = (patientIdInput.value || "").trim();
-          if (!raw) {
-            alert("When setting a bed to 'Occupied', you must enter a patient ID.");
-            return;
-          }
-          const parsed = parseInt(raw, 10);
-          if (Number.isNaN(parsed) || parsed <= 0) {
-            alert("Patient ID must be a positive number.");
-            return;
-          }
-          patient_id = parsed;
-        } else {
-          const raw = (patientIdInput.value || "").trim();
-          patient_id = raw ? parseInt(raw, 10) : null;
-        }
+  let patient_id = null;
 
-        try {
-          const res = await fetch(`${API_BASE}/beds/assign`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bed_number: bedNumber,
-              bed_status: new_status,
-              patient_id: patient_id,
-            }),
-          });
+  if (new_status === "occupied") {
+    const raw = (patientIdInput.value || "").trim();
+    if (!raw) return alert("Enter patient ID for occupied beds.");
+    patient_id = parseInt(raw, 10);
+  }
 
-          const text = await res.text();
-          if (!res.ok) {
-            alert(text || "Error updating bed");
-            return;
-          }
+  const res = await fetch(`${API_BASE}/beds/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bed_id: bedObj.bed_id,
+      bed_status: new_status,
+      patient_id: patient_id,
+    }),
+  });
 
-          alert("Bed updated successfully");
-          await loadBeds();
-          loadBedInfo(bedNumber);
-          loadPatientInfo(bedNumber);
-        } catch (err) {
-          console.error("Error updating bed:", err);
-          alert("Failed to update bed.");
-        }
-      }
+  const text = await res.text();
+  if (!res.ok) {
+    alert(text || "Error updating bed");
+    return;
+  }
+
+  alert("Bed updated successfully");
+  loadBeds();
+  loadBedInfo(bedNumber);
+  loadPatientInfo(bedNumber);
+}
+
 
       window.addEventListener("load", () => {
         setToday();
