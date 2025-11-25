@@ -244,8 +244,10 @@
 
          ALL_BEDS.forEach((b) => {
   const opt = document.createElement("option");
-  opt.value = b.bed_id;                   // HTML value = bed_id
-  opt.dataset.bedNumber = b.bed_number;   // dataset carries the real bed number
+ opt.value = b.bed_number;
+opt.dataset.bedId = b.bed_id;
+opt.dataset.wardId = b.ward_id;
+
   opt.dataset.wardId = b.ward_id;
 
   opt.textContent = `Bed ${b.bed_number} (${
@@ -267,7 +269,7 @@ updateOverviewCards();
 // IMPORTANT FIX — use bed_number, not bed_id
 select.addEventListener("change", (e) => {
   const opt = e.target.selectedOptions[0];
-  const bedNumber = opt.dataset.bedNumber;  // correct field
+  const bedNumber = bedSelect.value;  // correct field
 
   if (bedNumber) {
     loadBedInfo(bedNumber);
