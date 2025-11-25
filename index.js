@@ -372,9 +372,7 @@ app.get("/beds", async (req, res) => {
 app.post("/beds/update", async (req, res) => {
   const { bed_id, bed_status, patient_id } = req.body;
 
-  if (!bed_id) {
-    return res.status(400).send("Missing bed_id");
-  }
+  if (!bed_id) return res.status(400).send("Missing bed_id");
 
   try {
     const conn = await getDbConnection();
@@ -385,12 +383,13 @@ app.post("/beds/update", async (req, res) => {
     );
 
     await conn.end();
-    res.send("Bed updated");
+    res.send("Bed updated successfully");
   } catch (err) {
     console.error("Error in /beds/update:", err);
     res.status(500).send("Server error updating bed");
   }
 });
+
 
 
 
