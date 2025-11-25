@@ -1,4 +1,4 @@
-<PASTE THIS EXACT FILE INTO YOUR index.js>
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // --- Hospital Cloud Run Backend (MySQL + GCS CSV + Nurse Dashboard) ---
