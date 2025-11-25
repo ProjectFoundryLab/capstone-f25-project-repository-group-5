@@ -519,37 +519,6 @@ app.get("/admissions/latest", async (req, res) => {
   }
 });
 
-// ================================================================
-// GET ALL PATIENTS
-// ================================================================
-app.get("/patients", async (req, res) => {
-  try {
-    const conn = await getDbConnection();
-
-    const [rows] = await conn.query(`
-      SELECT 
-        patient_id,
-        first_name,
-        last_name,
-        date_of_birth,
-        gender,
-        medical_record_number,
-        admission_status,
-        priority_level,
-        admit_reason
-      FROM patients
-      ORDER BY patient_id ASC
-    `);
-
-    await conn.end();
-    res.json(rows);
-  } catch (err) {
-    console.error("Error fetching patients:", err);
-    res.status(500).send("Error fetching patients");
-  }
-});
-
-
 
 app.get("/health", (req, res) => res.send("ok"));
 
