@@ -235,50 +235,42 @@
       }
 
       async function loadBeds() {
-  try {
-    const res = await fetch(`${API_BASE}/beds`);
-    const beds = await res.json();
-    ALL_BEDS = beds || [];
+        try {
+          const res = await fetch(`${API_BASE}/beds`);
+          ALL_BEDS = await res.json();
 
-    const select = document.getElementById("bedSelect");
-    select.innerHTML = "";
+          const select = document.getElementById("bedSelect");
+          select.innerHTML = "";
 
-    beds.forEach((b) => {
-      const opt = document.createElement("option");
-      opt.value = b.bed_number;
+          ALL_BEDS.forEach((b) => {
+            const opt = document.createElement("option");
+            opt.value = b.bed_number;
+            opt.dataset.wardId = b.ward_id;
+            opt.textContent = `Bed ${b.bed_number} (${
+              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
+            })`;
+            select.appendChild(opt);
+          });
 
-      // Label shown in dropdown
-      opt.textContent = `${b.bed_number} — ${b.bed_status}`;
+          if (ALL_BEDS.length > 0) {
+            const firstBedNumber = ALL_BEDS[0].bed_number;
+            loadBedInfo(firstBedNumber);
+            loadPatientInfo(firstBedNumber);
+          }
 
-      // Color class for readability
-      opt.classList.add(`bed-option-${b.bed_status}`);
+          updateOverviewCards();
 
-      select.appendChild(opt);
-    });
-
-    // Auto-load info for first bed
-    if (beds.length > 0) {
-      loadBedInfo(beds[0].bed_number);
-      loadPatientInfo(beds[0].bed_number);
-    }
-
-    // Event: When user selects a different bed
-    select.addEventListener("change", (e) => {
-      const bedNum = e.target.value;
-      loadBedInfo(bedNum);
-      loadPatientInfo(bedNum);
-    });
-
-    // Update ward summary cards
-    updateOverviewCards();
-
-  } catch (err) {
-    console.error("Error loading beds:", err);
-    document.getElementById("bedSelect").innerHTML =
-      "<option>Failed to load beds</option>";
-  }
-}
-
+          select.addEventListener("change", (e) => {
+            const bedNumber = e.target.value;
+            if (bedNumber) {
+              loadBedInfo(bedNumber);
+              loadPatientInfo(bedNumber);
+            }
+          });
+        } catch (err) {
+          console.error("Error loading beds:", err);
+        }
+      }
 
       function updateOverviewCards() {
         const totalBeds = ALL_BEDS.length;
@@ -396,67 +388,63 @@
       }
 
       async function updateBed() {
-  const selectedValue = document.getElementById("bedSelect").value;
+        const bedNumber = document.getElementById("bedSelect").value;
+        const new_status = document.getElementById("statusSelect").value;
+        const patientIdInput = document.getElementById("patientIdInput");
 
-  if (!selectedValue) {
-    alert("Please select a bed first.");
-    return;
-  }
+        if (!bedNumber) {
+          alert("Please select a bed first.");
+          return;
+        }
 
-  // selectedValue is like "A101 — reserved"
-  const bed_number = selectedValue.split(" ")[0];  // "A101"
-  const new_status = document.getElementById("statusSelect").value;
-  const rawPatient = document.getElementById("patientIdInput").value.trim();
+        let patient_id = null;
 
-  let patient_id = null;
+        if (new_status === "available") {
+          patient_id = null;
+          if (patientIdInput) patientIdInput.value = "";
+        } else if (new_status === "occupied") {
+          const raw = (patientIdInput.value || "").trim();
+          if (!raw) {
+            alert("When setting a bed to 'Occupied', you must enter a patient ID.");
+            return;
+          }
+          const parsed = parseInt(raw, 10);
+          if (Number.isNaN(parsed) || parsed <= 0) {
+            alert("Patient ID must be a positive number.");
+            return;
+          }
+          patient_id = parsed;
+        } else {
+          const raw = (patientIdInput.value || "").trim();
+          patient_id = raw ? parseInt(raw, 10) : null;
+        }
 
-  if (new_status === "occupied") {
-    if (!rawPatient) {
-      alert("Enter a patient ID when setting a bed to occupied.");
-      return;
-    }
-    patient_id = parseInt(rawPatient, 10);
-    if (isNaN(patient_id)) {
-      alert("Invalid patient ID.");
-      return;
-    }
-  }
+        try {
+          const res = await fetch(`${API_BASE}/beds/assign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bed_number: bedNumber,
+              bed_status: new_status,
+              patient_id: patient_id,
+            }),
+          });
 
-  const payload = {
-    bed_number: bed_number,
-    bed_status: new_status,
-    patient_id: patient_id
-  };
+          const text = await res.text();
+          if (!res.ok) {
+            alert(text || "Error updating bed");
+            return;
+          }
 
-  console.log("Sending to backend:", payload);
-
-  try {
-    const res = await fetch(`${API_BASE}/beds/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const text = await res.text();
-    if (!res.ok) {
-      console.error("Server returned error:", text);
-      alert(text);
-      return;
-    }
-
-    alert("Bed updated successfully!");
-
-    loadBeds();
-    loadBedInfo(bed_number);
-    loadPatientInfo(bed_number);
-
-  } catch (err) {
-    console.error("Network/update error:", err);
-    alert("Failed to update bed.");
-  }
-}
-
-
+          alert("Bed updated successfully");
+          await loadBeds();
+          loadBedInfo(bedNumber);
+          loadPatientInfo(bedNumber);
+        } catch (err) {
+          console.error("Error updating bed:", err);
+          alert("Failed to update bed.");
+        }
+      }
 
       window.addEventListener("load", () => {
         setToday();
