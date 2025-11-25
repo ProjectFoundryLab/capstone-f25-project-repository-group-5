@@ -380,7 +380,7 @@ app.post("/beds/assign", async (req, res) => {
   try {
     const conn = await getDbConnection();
 
-    // 1) Convert bed_number -> bed_id
+    // 1) Convert bed_number → bed_id + ward_id
     const [beds] = await conn.query(
       "SELECT bed_id, ward_id FROM beds WHERE bed_number = ?",
       [bed_number]
@@ -400,7 +400,7 @@ app.post("/beds/assign", async (req, res) => {
       [bed_status, patient_id || null, bed_id]
     );
 
-    // 3) If bed becomes available → discharge admission
+    // 3) If available → discharge
     if (bed_status === "available") {
       await conn.query(
         `UPDATE admissions
@@ -412,7 +412,7 @@ app.post("/beds/assign", async (req, res) => {
       );
     }
 
-    // 4) If bed becomes occupied → create a new admission
+    // 4) If occupied → create admission
     if (bed_status === "occupied" && patient_id) {
       await conn.query(
         `INSERT INTO admissions (
@@ -432,6 +432,7 @@ app.post("/beds/assign", async (req, res) => {
     res.status(500).send("Server error updating bed + admissions");
   }
 });
+
 
 
 
