@@ -395,21 +395,18 @@
       }
 
       async function updateBed() {
-  // Get the selected bed_id from the dropdown
-  const bedId = parseInt(document.getElementById("bedSelect").value); 
-  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`); 
-  const bedNumber = option?.dataset.bedNumber; // Get the bed_number from the selected option
+  const bedId = parseInt(document.getElementById("bedSelect").value);
+  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
+  const bedNumber = option?.dataset.bedNumber;
 
-  // Validate the bed_id and bed_number
+  const new_status = document.getElementById("statusSelect").value;
+  const patientIdInput = document.getElementById("patientIdInput");
+
   if (!bedId || !bedNumber) {
     alert("Missing bed_id or bed_number");
     return;
   }
 
-  const new_status = document.getElementById("statusSelect").value;
-  const patientIdInput = document.getElementById("patientIdInput");
-
-  // Set patient_id to null if the status is available, or fetch the ID if the status is occupied
   let patient_id = null;
 
   if (new_status === "available") {
@@ -430,12 +427,11 @@
   }
 
   try {
-    // Send the POST request to the backend with the correct body
     const res = await fetch(`${API_BASE}/beds/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber, // Send bed_number in the request
+        bed_number: bedNumber,
         bed_status: new_status,
         patient_id: patient_id,
       }),
@@ -447,18 +443,6 @@
       alert(text || "Error updating bed");
       return;
     }
-
-    alert("Bed updated successfully");
-    loadBeds();  // Refresh bed data
-    loadBedInfo(bedNumber); // Refresh bed details
-    loadPatientInfo(bedNumber); // Refresh patient details
-
-  } catch (err) {
-    console.error("Error updating bed:", err);
-    alert("Failed to update bed.");
-  }
-}
-
 
     alert("Bed updated successfully");
     loadBeds();
