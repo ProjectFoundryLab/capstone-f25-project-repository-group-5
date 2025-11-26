@@ -411,6 +411,7 @@
 
   if (new_status === "available") {
     patient_id = null;
+    if (patientIdInput) patientIdInput.value = "";
   } 
   else if (new_status === "occupied") {
     const raw = (patientIdInput.value || "").trim();
@@ -424,21 +425,25 @@
       return;
     }
     patient_id = parsed;
+  } 
+  else {
+    const raw = (patientIdInput.value || "").trim();
+    patient_id = raw ? parseInt(raw, 10) : null;
   }
 
   try {
+    // Correct endpoint: /beds/assign
     const res = await fetch(`${API_BASE}/beds/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber,
+        bed_id: bedId,
         bed_status: new_status,
         patient_id: patient_id,
       }),
     });
 
     const text = await res.text();
-
     if (!res.ok) {
       alert(text || "Error updating bed");
       return;
@@ -454,6 +459,7 @@
     alert("Failed to update bed.");
   }
 }
+
 
 
       window.addEventListener("load", () => {
