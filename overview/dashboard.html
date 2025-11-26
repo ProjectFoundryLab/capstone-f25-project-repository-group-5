@@ -402,8 +402,8 @@
   const new_status = document.getElementById("statusSelect").value;
   const patientIdInput = document.getElementById("patientIdInput");
 
-  if (!bedId || !bedNumber) {
-    alert("Missing bed_id or bed_number");
+  if (!bedNumber) {
+    alert("Missing bed_number");
     return;
   }
 
@@ -437,7 +437,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_id: bedId,
+        bed_number: bedNumber,  // Correct field: bed_number
         bed_status: new_status,
         patient_id: patient_id,
       }),
