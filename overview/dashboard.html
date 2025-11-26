@@ -158,35 +158,35 @@
       </section>
 
       <!-- UPDATE BED + DETAILS -->
-      <section class="card">
-        <h3>Update bed status</h3>
-        <p class="muted">
-          Choose a bed and update its current status.
-        </p>
+    <div class="filters-row">
+  <select id="bedSelect" class="input-select">
+    <option>Loading beds…</option>
+    <!-- Example bed options -->
+    <!-- Ensure that the bed_number is properly set in the data-bed-number attribute -->
+    <option value="1" data-bed-number="A101">Bed A101</option>
+    <option value="2" data-bed-number="B202">Bed B202</option>
+    <!-- More beds will be dynamically loaded here -->
+  </select>
 
-        <div class="filters-row">
-          <select id="bedSelect" class="input-select">
-            <option>Loading beds…</option>
-          </select>
+  <select id="statusSelect" class="input-select">
+    <option value="available">Available</option>
+    <option value="occupied">Occupied</option>
+    <option value="reserved">Reserved</option>
+    <option value="cleaning">Cleaning</option>
+    <option value="transferring">Transferring</option>
+  </select>
 
-          <select id="statusSelect" class="input-select">
-            <option value="available">Available</option>
-            <option value="occupied">Occupied</option>
-            <option value="reserved">Reserved</option>
-            <option value="cleaning">Cleaning</option>
-            <option value="transferring">Transferring</option>
-          </select>
+  <input
+    id="patientIdInput"
+    class="input-select"
+    placeholder="Patient ID (only required if Occupied)"
+    style="max-width:180px;"
+  />
 
-          <input
-            id="patientIdInput"
-            class="input-select"
-            placeholder="Patient ID (only required if Occupied)"
-            style="max-width:180px;"
-          />
+  <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+</div>
 
-          <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
-        </div>
-      </section>
+
 
       <!-- BOTTOM ROW: DETAILS -->
       <section class="top-row">
@@ -397,7 +397,7 @@
       async function updateBed() {
   const bedId = parseInt(document.getElementById("bedSelect").value);
   const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
-  const bedNumber = option?.dataset.bedNumber;
+  const bedNumber = option ? option.dataset.bedNumber : null;  // Retrieve bed_number correctly
 
   const new_status = document.getElementById("statusSelect").value;
   const patientIdInput = document.getElementById("patientIdInput");
@@ -459,6 +459,7 @@
     alert("Failed to update bed.");
   }
 }
+
 
 
 
