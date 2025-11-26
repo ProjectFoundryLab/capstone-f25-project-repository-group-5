@@ -429,6 +429,14 @@ app.post("/beds/assign", async (req, res) => {
       );
     }
 
+    res.status(200).send("Bed updated successfully");
+  } catch (err) {
+    console.error("Error processing bed assignment:", err);
+    return res.status(500).send("Error processing bed assignment");
+  }
+});
+
+
     await conn.end();
     res.send("Bed + admission updated successfully");
   } catch (err) {
