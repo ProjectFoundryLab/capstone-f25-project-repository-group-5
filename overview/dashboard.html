@@ -14,6 +14,7 @@
   </head>
 
   <body class="dashboard-page">
+
     <!-- =========================
          SIDEBAR
          ========================= -->
@@ -52,6 +53,7 @@
     <!-- =========================
          MAIN CONTENT
          ========================= -->
+
     <main class="dashboard-content">
       <header class="topbar">
         <div></div>
@@ -68,9 +70,8 @@
         </p>
       </section>
 
-      <!-- TOP ROW: OCCUPANCY + LOOKER STUDIO ADMISSIONS -->
+      <!-- TOP ROW -->
       <section class="top-row top-row-main">
-        <!-- LEFT: OCCUPANCY -->
         <div class="card occupancy-card">
           <h3>Occupancy</h3>
 
@@ -87,46 +88,24 @@
 
           <div class="status-header">Bed status</div>
           <ul class="status-list vertical-status">
-            <li>
-              <span class="status-label status-available">Available</span>
-              <span class="status-value" id="countAvailable">—</span>
-            </li>
-            <li>
-              <span class="status-label status-occupied">Occupied</span>
-              <span class="status-value" id="countOccupied">—</span>
-            </li>
-            <li>
-              <span class="status-label status-reserved">Reserved</span>
-              <span class="status-value" id="countReserved">—</span>
-            </li>
-            <li>
-              <span class="status-label status-cleaning">Cleaning</span>
-              <span class="status-value" id="countCleaning">—</span>
-            </li>
-            <li>
-              <span class="status-label status-transferring">Transferring</span>
-              <span class="status-value" id="countTransferring">—</span>
-            </li>
+            <li><span class="status-label status-available">Available</span> <span id="countAvailable">—</span></li>
+            <li><span class="status-label status-occupied">Occupied</span> <span id="countOccupied">—</span></li>
+            <li><span class="status-label status-reserved">Reserved</span> <span id="countReserved">—</span></li>
+            <li><span class="status-label status-cleaning">Cleaning</span> <span id="countCleaning">—</span></li>
+            <li><span class="status-label status-transferring">Transferring</span> <span id="countTransferring">—</span></li>
           </ul>
         </div>
 
-        <!-- RIGHT: ADMISSIONS CHART -->
         <div class="card chart-card">
           <div class="chart-frame">
             <iframe
               src="https://lookerstudio.google.com/embed/reporting/6e261ff2-c6fa-45c8-8a08-9237021c09ca/page/ZQWgF"
-              width="100%"
-              height="100%"
-              frameborder="0"
-              style="border:0;"
-              allowfullscreen
-              sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
-            </iframe>
+              width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
           </div>
         </div>
       </section>
 
-      <!-- MIDDLE ROW: 3 WARD CARDS -->
+      <!-- WARDS -->
       <section class="page-section">
         <div class="section-header">
           <h3>Wards overview</h3>
@@ -157,50 +136,42 @@
         </div>
       </section>
 
-      <!-- UPDATE BED + DETAILS -->
-    <div class="filters-row">
-  <select id="bedSelect" class="input-select">
-    <option>Loading beds…</option>
-    <!-- Example bed options -->
-    <!-- Ensure that the bed_number is properly set in the data-bed-number attribute -->
-    <option value="1" data-bed-number="A101">Bed A101</option>
-    <option value="2" data-bed-number="B202">Bed B202</option>
-    <!-- More beds will be dynamically loaded here -->
-  </select>
+      <!-- UPDATE BED -->
+      <section class="card">
+        <h3>Update bed status</h3>
+        <p class="muted">Choose a bed and update its current status.</p>
 
-  <select id="statusSelect" class="input-select">
-    <option value="available">Available</option>
-    <option value="occupied">Occupied</option>
-    <option value="reserved">Reserved</option>
-    <option value="cleaning">Cleaning</option>
-    <option value="transferring">Transferring</option>
-  </select>
+        <div class="filters-row">
+          <select id="bedSelect" class="input-select">
+            <option>Loading beds…</option>
+          </select>
 
-  <input
-    id="patientIdInput"
-    class="input-select"
-    placeholder="Patient ID (only required if Occupied)"
-    style="max-width:180px;"
-  />
+          <select id="statusSelect" class="input-select">
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="reserved">Reserved</option>
+            <option value="cleaning">Cleaning</option>
+            <option value="transferring">Transferring</option>
+          </select>
 
-  <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
-</div>
+          <input id="patientIdInput" class="input-select" placeholder="Patient ID (only for Occupied)" style="max-width:180px;" />
 
+          <button class="small-btn" type="button" onclick="updateBed()">Update bed</button>
+        </div>
+      </section>
 
-
-
-      <!-- BOTTOM ROW: DETAILS -->
+      <!-- DETAILS -->
       <section class="top-row">
         <div class="card">
           <h3>Bed details</h3>
-          <div id="bedInfoBox" style="display:none; margin-top: 10px; font-size: 13px;">
+          <div id="bedInfoBox" style="display:none; margin-top: 10px;">
             <p id="bedInfoContent"></p>
           </div>
         </div>
 
         <div class="card">
           <h3>Patient details</h3>
-          <div id="patientInfo" style="display:none; margin-top: 10px; font-size: 13px;">
+          <div id="patientInfo" style="display:none; margin-top: 10px;">
             <p><strong>Patient ID:</strong> <span id="pi_id"></span></p>
             <p><strong>Name:</strong> <span id="pi_name"></span></p>
             <p><strong>Admission status:</strong> <span id="pi_status"></span></p>
@@ -213,243 +184,203 @@
     </main>
 
     <!-- =========================
-         SCRIPTS
+         JAVASCRIPT
          ========================= -->
     <script>
       const API_BASE = "https://ingest-service-725327609427.us-east5.run.app";
-
-      const WARD_LABELS = {
-        1: "ICU North",
-        2: "General East",
-        3: "Isolation South",
-      };
-
+      const WARD_LABELS = {1:"ICU North",2:"General East",3:"Isolation South"};
       let ALL_BEDS = [];
 
       function setToday() {
-        const el = document.getElementById("todayValue");
-        const now = new Date();
-        el.textContent = now.toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        document.getElementById("todayValue").textContent =
+          new Date().toLocaleString("en-US", { month:"short", day:"numeric" });
       }
 
-async function loadBeds() {
-  try {
-    const res = await fetch(`${API_BASE}/beds`);
-    ALL_BEDS = await res.json();
+      // ---------------------------
+      // LOAD BEDS
+      // ---------------------------
+      async function loadBeds() {
+        try {
+          const res = await fetch(`${API_BASE}/beds`);
+          ALL_BEDS = await res.json();
 
-    const select = document.getElementById("bedSelect");
-    select.innerHTML = "";
+          const select = document.getElementById("bedSelect");
+          select.innerHTML = "";
 
-    // Keep using bed_id in the dropdown (dashboard depends on this)
-    ALL_BEDS.forEach(b => {
-      const opt = document.createElement("option");
-      opt.value = b.bed_id;               // dashboard logic uses bed_id
-      opt.dataset.bedNumber = b.bed_number; // we store bed_number as extra
-      opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
-      select.appendChild(opt);
-    });
+          ALL_BEDS.forEach(b => {
+            const opt = document.createElement("option");
+            opt.value = b.bed_id;
+            opt.dataset.bedNumber = b.bed_number;
+            opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
+            select.appendChild(opt);
+          });
 
-    // Auto-load first bed
-    if (ALL_BEDS.length > 0) {
-      const first = ALL_BEDS[0];
-      select.value = first.bed_id;
-      loadBedInfo(first.bed_number);
-      loadPatientInfo(first.bed_number);
-    }
-
-    // When selecting a bed
-    select.onchange = (e) => {
-      const chosen = ALL_BEDS.find(b => b.bed_id == e.target.value);
-      if (!chosen) return;
-      loadBedInfo(chosen.bed_number);
-      loadPatientInfo(chosen.bed_number);
-    };
-
-  } catch (err) {
-    console.error("Error loading beds:", err);
-  }
-}
-
-
-      function updateOverviewCards() {
-        const totalBeds = ALL_BEDS.length;
-
-        const counts = {
-          available: 0,
-          occupied: 0,
-          reserved: 0,
-          cleaning: 0,
-          transferring: 0,
-        };
-
-        ALL_BEDS.forEach((b) => {
-          if (counts[b.bed_status] !== undefined) counts[b.bed_status]++;
-        });
-
-        const inUse = counts.occupied + counts.transferring;
-        const pct = totalBeds ? Math.round((inUse / totalBeds) * 100) : 0;
-
-        document.getElementById("overallTotalBeds").textContent = totalBeds;
-        document.getElementById("overallOccupiedBeds").textContent = inUse;
-        document.getElementById("overallOccupancyPercent").textContent = pct;
-
-        document.getElementById("countAvailable").textContent = counts.available;
-        document.getElementById("countOccupied").textContent = counts.occupied;
-        document.getElementById("countReserved").textContent = counts.reserved;
-        document.getElementById("countCleaning").textContent = counts.cleaning;
-        document.getElementById("countTransferring").textContent = counts.transferring;
-
-        const wardStats = {};
-        ALL_BEDS.forEach((b) => {
-          const wid = b.ward_id;
-          if (!wardStats[wid]) {
-            wardStats[wid] = {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
+          if (ALL_BEDS.length > 0) {
+            const first = ALL_BEDS[0];
+            select.value = first.bed_id;
+            loadBedInfo(first.bed_number);
+            loadPatientInfo(first.bed_number);
           }
-          wardStats[wid].total++;
-          if (wardStats[wid][b.bed_status] !== undefined) {
-            wardStats[wid][b.bed_status]++;
-          }
-        });
 
-        ["1", "2", "3"].forEach((wid) => {
-          const s =
-            wardStats[wid] || {
-              total: 0,
-              occupied: 0,
-              available: 0,
-              reserved: 0,
-              cleaning: 0,
-              transferring: 0,
-            };
-          document.getElementById(`ward-${wid}-total`).textContent = s.total;
-          document.getElementById(`ward-${wid}-inuse`).textContent =
-            s.occupied + s.transferring;
-          document.getElementById(`ward-${wid}-available`).textContent = s.available;
-        });
+          updateOverviewCards();
+
+          select.onchange = e => {
+            const chosen = ALL_BEDS.find(b => b.bed_id == e.target.value);
+            if (!chosen) return;
+            loadBedInfo(chosen.bed_number);
+            loadPatientInfo(chosen.bed_number);
+          };
+
+        } catch (err) {
+          console.error("Error loading beds:", err);
+        }
       }
 
+      // ---------------------------
+      // UPDATE BED
+      // ---------------------------
+      async function updateBed() {
+        const bedId = parseInt(document.getElementById("bedSelect").value);
+        const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
+        const bedNumber = option?.dataset.bedNumber;
+
+        if (!bedNumber) {
+          alert("Missing bed_number");
+          return;
+        }
+
+        const status = document.getElementById("statusSelect").value;
+        const pidRaw = document.getElementById("patientIdInput").value.trim();
+        let patient_id = null;
+
+        if (status === "occupied") {
+          if (!pidRaw) {
+            alert("When setting to 'Occupied', enter a patient ID.");
+            return;
+          }
+          patient_id = parseInt(pidRaw, 10);
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/beds/assign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bed_number: bedNumber,
+              bed_status: status,
+              patient_id: patient_id,
+            }),
+          });
+
+          const msg = await res.text();
+          if (!res.ok) {
+            alert(msg || "Update failed");
+            return;
+          }
+
+          alert("Bed updated successfully!");
+
+          loadBeds();
+          loadBedInfo(bedNumber);
+          loadPatientInfo(bedNumber);
+
+        } catch (err) {
+          console.error("Error updating bed:", err);
+          alert("Failed to update bed.");
+        }
+      }
+
+      // ---------------------------
+      // LOAD BED INFO
+      // ---------------------------
       async function loadBedInfo(bedNumber) {
         try {
           const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
           if (!res.ok) return;
-          const data = await res.json();
 
+          const d = await res.json();
           const box = document.getElementById("bedInfoBox");
-          const content = document.getElementById("bedInfoContent");
 
           box.style.display = "block";
-          content.innerHTML = `
-            <strong>Bed number:</strong> ${data.bed_number}<br>
-            <strong>Status:</strong> ${data.bed_status}<br>
-            <strong>Type:</strong> ${data.bed_type}<br>
-            <strong>Ward:</strong> ${data.ward_name} (Floor ${data.floor_number})<br>
-            <strong>Patient assigned:</strong> ${data.patient_id ?? "None"}
+          document.getElementById("bedInfoContent").innerHTML = `
+            <strong>Bed:</strong> ${d.bed_number}<br>
+            <strong>Status:</strong> ${d.bed_status}<br>
+            <strong>Type:</strong> ${d.bed_type}<br>
+            <strong>Ward:</strong> ${d.ward_name} (Floor ${d.floor_number})<br>
+            <strong>Patient:</strong> ${d.patient_id ?? "None"}
           `;
         } catch (err) {
           console.error("Error loading bed info:", err);
         }
       }
 
+      // ---------------------------
+      // LOAD PATIENT INFO
+      // ---------------------------
       async function loadPatientInfo(bedNumber) {
         const box = document.getElementById("patientInfo");
 
         try {
           const res = await fetch(`${API_BASE}/beds/${bedNumber}`);
-          if (!res.ok) {
-            box.style.display = "none";
-            return;
-          }
+          if (!res.ok) { box.style.display="none"; return; }
 
           const d = await res.json();
 
           document.getElementById("pi_id").textContent = d.patient_id ?? "None";
           document.getElementById("pi_name").textContent = d.first_name
-            ? `${d.first_name} ${d.last_name}`
-            : "No patient assigned";
-          document.getElementById("pi_status").textContent =
-            d.admission_status ?? "N/A";
+            ? `${d.first_name} ${d.last_name}` : "No patient";
+          document.getElementById("pi_status").textContent = d.admission_status ?? "N/A";
           document.getElementById("pi_bed_status").textContent = d.bed_status;
           document.getElementById("pi_bed_type").textContent = d.bed_type;
           document.getElementById("pi_ward").textContent = d.ward_name;
 
           box.style.display = "block";
+
         } catch (err) {
           console.error("Error loading patient info:", err);
           box.style.display = "none";
         }
       }
 
-      async function updateBed() {
-  const bedId = parseInt(document.getElementById("bedSelect").value);
-  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
-  const bedNumber = option?.dataset.bedNumber;
+      // ---------------------------
+      // OVERVIEW CARDS
+      // ---------------------------
+      function updateOverviewCards() {
+        const total = ALL_BEDS.length;
+        const c = {available:0, occupied:0, reserved:0, cleaning:0, transferring:0};
 
-  const new_status = document.getElementById("statusSelect").value;
-  const patientInput = document.getElementById("patientIdInput");
+        ALL_BEDS.forEach(b => { if (c[b.bed_status] !== undefined) c[b.bed_status]++; });
 
-  if (!bedNumber) {
-    alert("Missing bed_number");
-    return;
-  }
+        const inUse = c.occupied + c.transferring;
+        const pct = total ? Math.round((inUse/total)*100) : 0;
 
-  let patient_id = null;
+        document.getElementById("overallTotalBeds").textContent = total;
+        document.getElementById("overallOccupiedBeds").textContent = inUse;
+        document.getElementById("overallOccupancyPercent").textContent = pct;
 
-  if (new_status === "occupied") {
-    const raw = (patientInput.value || "").trim();
-    if (!raw) {
-      alert("When setting a bed to 'Occupied', you must enter a patient ID.");
-      return;
-    }
-    patient_id = parseInt(raw, 10);
-  }
+        document.getElementById("countAvailable").textContent = c.available;
+        document.getElementById("countOccupied").textContent = c.occupied;
+        document.getElementById("countReserved").textContent = c.reserved;
+        document.getElementById("countCleaning").textContent = c.cleaning;
+        document.getElementById("countTransferring").textContent = c.transferring;
 
-  try {
-    const res = await fetch(`${API_BASE}/beds/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bed_number: bedNumber,     // ← backend expects this
-        bed_status: new_status,
-        patient_id: patient_id,
-      }),
-    });
+        ["1","2","3"].forEach(wid => {
+          const s = ALL_BEDS.filter(b => b.ward_id == wid);
+          const occ = s.filter(b => b.bed_status === "occupied" || b.bed_status === "transferring").length;
+          const avail = s.filter(b => b.bed_status === "available").length;
 
-    const text = await res.text();
-    if (!res.ok) {
-      alert(text || "Error updating bed");
-      return;
-    }
+          document.getElementById(`ward-${wid}-total`).textContent = s.length;
+          document.getElementById(`ward-${wid}-inuse`).textContent = occ;
+          document.getElementById(`ward-${wid}-available`).textContent = avail;
+        });
+      }
 
-    alert("Bed updated successfully!");
-
-    loadBeds();
-    loadBedInfo(bedNumber);
-    loadPatientInfo(bedNumber);
-
-  } catch (err) {
-    console.error("Error updating bed:", err);
-    alert("Failed to update bed.");
-  }
-}
-
-
-
-
-
+      // RUN
       window.addEventListener("load", () => {
         setToday();
         loadBeds();
       });
     </script>
+
   </body>
 </html>
