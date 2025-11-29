@@ -234,7 +234,6 @@
           day: "numeric",
         });
       }
-let ALL_BEDS = [];
 
 async function loadBeds() {
   try {
@@ -244,32 +243,31 @@ async function loadBeds() {
     const select = document.getElementById("bedSelect");
     select.innerHTML = "";
 
-    // Each option's value IS the bed_number (A101, B202, etc.)
-    ALL_BEDS.forEach((b) => {
+    // Keep using bed_id in the dropdown (dashboard depends on this)
+    ALL_BEDS.forEach(b => {
       const opt = document.createElement("option");
-      opt.value = b.bed_number;   // 🔑 this is what we send to /beds/assign
-      opt.textContent = `Bed ${b.bed_number} (${
-        WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-      })`;
+      opt.value = b.bed_id;               // dashboard logic uses bed_id
+      opt.dataset.bedNumber = b.bed_number; // we store bed_number as extra
+      opt.textContent = `Bed ${b.bed_number} (${WARD_LABELS[b.ward_id]})`;
       select.appendChild(opt);
     });
 
-    // Auto-load first bed’s info
+    // Auto-load first bed
     if (ALL_BEDS.length > 0) {
-      const firstNumber = ALL_BEDS[0].bed_number;
-      select.value = firstNumber;
-      loadBedInfo(firstNumber);
-      loadPatientInfo(firstNumber);
+      const first = ALL_BEDS[0];
+      select.value = first.bed_id;
+      loadBedInfo(first.bed_number);
+      loadPatientInfo(first.bed_number);
     }
 
-    // When you change the dropdown, reload details for that bed_number
+    // When selecting a bed
     select.onchange = (e) => {
-      const bedNumber = e.target.value;
-      if (bedNumber) {
-        loadBedInfo(bedNumber);
-        loadPatientInfo(bedNumber);
-      }
+      const chosen = ALL_BEDS.find(b => b.bed_id == e.target.value);
+      if (!chosen) return;
+      loadBedInfo(chosen.bed_number);
+      loadPatientInfo(chosen.bed_number);
     };
+
   } catch (err) {
     console.error("Error loading beds:", err);
   }
@@ -392,33 +390,27 @@ async function loadBeds() {
       }
 
       async function updateBed() {
-  const bedNumber = document.getElementById("bedSelect").value;
+  const bedId = parseInt(document.getElementById("bedSelect").value);
+  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
+  const bedNumber = option?.dataset.bedNumber;
+
   const new_status = document.getElementById("statusSelect").value;
-  const patientInputEl = document.getElementById("patientIdInput");
-  const rawPatient = (patientInputEl.value || "").trim();
+  const patientInput = document.getElementById("patientIdInput");
 
   if (!bedNumber) {
-    alert("Please select a bed.");
+    alert("Missing bed_number");
     return;
   }
 
   let patient_id = null;
 
   if (new_status === "occupied") {
-    if (!rawPatient) {
+    const raw = (patientInput.value || "").trim();
+    if (!raw) {
       alert("When setting a bed to 'Occupied', you must enter a patient ID.");
       return;
     }
-    const parsed = parseInt(rawPatient, 10);
-    if (Number.isNaN(parsed) || parsed <= 0) {
-      alert("Patient ID must be a positive number.");
-      return;
-    }
-    patient_id = parsed;
-  } else if (rawPatient) {
-    // optional patient for other statuses
-    const parsed = parseInt(rawPatient, 10);
-    patient_id = Number.isNaN(parsed) ? null : parsed;
+    patient_id = parseInt(raw, 10);
   }
 
   try {
@@ -426,7 +418,7 @@ async function loadBeds() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber,      // 👈 THIS is what your backend needs
+        bed_number: bedNumber,     // ← backend expects this
         bed_status: new_status,
         patient_id: patient_id,
       }),
@@ -435,23 +427,11 @@ async function loadBeds() {
     const text = await res.text();
     if (!res.ok) {
       alert(text || "Error updating bed");
-      console.error("Update error:", text);
       return;
     }
 
     alert("Bed updated successfully!");
 
-    // refresh UI
-    await loadBeds();
-    await loadBedInfo(bedNumber);
-    await loadPatientInfo(bedNumber);
-  } catch (err) {
-    console.error("Error updating bed:", err);
-    alert("Failed to update bed.");
-  }
-}
-
-    alert("Bed updated successfully");
     loadBeds();
     loadBedInfo(bedNumber);
     loadPatientInfo(bedNumber);
@@ -461,6 +441,7 @@ async function loadBeds() {
     alert("Failed to update bed.");
   }
 }
+
 
 
 
