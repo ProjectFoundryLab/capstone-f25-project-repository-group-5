@@ -234,51 +234,47 @@
           day: "numeric",
         });
       }
+let ALL_BEDS = [];
 
-      async function loadBeds() {
-        try {
-          const res = await fetch(`${API_BASE}/beds`);
-          ALL_BEDS = await res.json();
+async function loadBeds() {
+  try {
+    const res = await fetch(`${API_BASE}/beds`);
+    ALL_BEDS = await res.json();
 
-          const select = document.getElementById("bedSelect");
-          select.innerHTML = "";
+    const select = document.getElementById("bedSelect");
+    select.innerHTML = "";
 
-          ALL_BEDS.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.bed_number;  // <-- Use bed_number for the value
-            opt.dataset.bedId = b.bed_id;  // <-- Store bed_id in the dataset
-            opt.dataset.wardId = b.ward_id;  // <-- Store ward_id in the dataset
+    // Each option's value IS the bed_number (A101, B202, etc.)
+    ALL_BEDS.forEach((b) => {
+      const opt = document.createElement("option");
+      opt.value = b.bed_number;   // 🔑 this is what we send to /beds/assign
+      opt.textContent = `Bed ${b.bed_number} (${
+        WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
+      })`;
+      select.appendChild(opt);
+    });
 
-            // Add ward label to the option text
-            opt.textContent = `Bed ${b.bed_number} (${
-              WARD_LABELS[b.ward_id] || "Ward " + b.ward_id
-            })`;
+    // Auto-load first bed’s info
+    if (ALL_BEDS.length > 0) {
+      const firstNumber = ALL_BEDS[0].bed_number;
+      select.value = firstNumber;
+      loadBedInfo(firstNumber);
+      loadPatientInfo(firstNumber);
+    }
 
-            select.appendChild(opt);
-          });
-
-          // Load first bed's info
-          if (ALL_BEDS.length > 0) {
-            const firstNumber = ALL_BEDS[0].bed_number;
-            loadBedInfo(firstNumber);
-            loadPatientInfo(firstNumber);
-          }
-
-          updateOverviewCards();
-
-          // IMPORTANT FIX — use bed_number, not bed_id
-          select.addEventListener("change", (e) => {
-            const bedNumber = bedSelect.value;  // correct field
-
-            if (bedNumber) {
-              loadBedInfo(bedNumber);
-              loadPatientInfo(bedNumber);
-            }
-          });
-        } catch (err) {
-          console.error("Error loading beds:", err);
-        }
+    // When you change the dropdown, reload details for that bed_number
+    select.onchange = (e) => {
+      const bedNumber = e.target.value;
+      if (bedNumber) {
+        loadBedInfo(bedNumber);
+        loadPatientInfo(bedNumber);
       }
+    };
+  } catch (err) {
+    console.error("Error loading beds:", err);
+  }
+}
+
 
       function updateOverviewCards() {
         const totalBeds = ALL_BEDS.length;
@@ -396,49 +392,41 @@
       }
 
       async function updateBed() {
-  const bedId = parseInt(document.getElementById("bedSelect").value);
-  const option = document.querySelector(`#bedSelect option[value="${bedId}"]`);
-  const bedNumber = option ? option.dataset.bedNumber : null;  // Retrieve bed_number correctly
-
+  const bedNumber = document.getElementById("bedSelect").value;
   const new_status = document.getElementById("statusSelect").value;
-  const patientIdInput = document.getElementById("patientIdInput");
+  const patientInputEl = document.getElementById("patientIdInput");
+  const rawPatient = (patientInputEl.value || "").trim();
 
   if (!bedNumber) {
-    alert("Missing bed_number");
+    alert("Please select a bed.");
     return;
   }
 
   let patient_id = null;
 
-  if (new_status === "available") {
-    patient_id = null;
-    if (patientIdInput) patientIdInput.value = "";
-  } 
-  else if (new_status === "occupied") {
-    const raw = (patientIdInput.value || "").trim();
-    if (!raw) {
+  if (new_status === "occupied") {
+    if (!rawPatient) {
       alert("When setting a bed to 'Occupied', you must enter a patient ID.");
       return;
     }
-    const parsed = parseInt(raw, 10);
+    const parsed = parseInt(rawPatient, 10);
     if (Number.isNaN(parsed) || parsed <= 0) {
       alert("Patient ID must be a positive number.");
       return;
     }
     patient_id = parsed;
-  } 
-  else {
-    const raw = (patientIdInput.value || "").trim();
-    patient_id = raw ? parseInt(raw, 10) : null;
+  } else if (rawPatient) {
+    // optional patient for other statuses
+    const parsed = parseInt(rawPatient, 10);
+    patient_id = Number.isNaN(parsed) ? null : parsed;
   }
 
   try {
-    // Correct endpoint: /beds/assign
     const res = await fetch(`${API_BASE}/beds/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bed_number: bedNumber,  // Correct field: bed_number
+        bed_number: bedNumber,      // 👈 THIS is what your backend needs
         bed_status: new_status,
         patient_id: patient_id,
       }),
@@ -447,8 +435,21 @@
     const text = await res.text();
     if (!res.ok) {
       alert(text || "Error updating bed");
+      console.error("Update error:", text);
       return;
     }
+
+    alert("Bed updated successfully!");
+
+    // refresh UI
+    await loadBeds();
+    await loadBedInfo(bedNumber);
+    await loadPatientInfo(bedNumber);
+  } catch (err) {
+    console.error("Error updating bed:", err);
+    alert("Failed to update bed.");
+  }
+}
 
     alert("Bed updated successfully");
     loadBeds();
