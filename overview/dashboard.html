@@ -35,6 +35,7 @@
           </div>
         </div>
       </div>
+      </div>
 
       <nav class="sidebar-nav">
         <p class="sidebar-label">Overview</p>
@@ -380,6 +381,24 @@
       window.addEventListener("load", () => {
         setToday();
         loadBeds();
+      });
+    </script>
+
+    </script>
+
+    <!-- FIREBASE / AUTH USER DISPLAY -->
+    <script type="module">
+      import { loadUserProfile, logout } from "../shared/auth.js";
+      loadUserProfile().then(data => {
+        document.getElementById("userName").textContent = data.fullName;
+        document.getElementById("userRole").textContent = data.role;
+        document.getElementById("userInitials").textContent =
+          data.fullName.split(" ").map(x => x[0]).join("");
+      });
+
+      document.querySelector(".logout-link").addEventListener("click", (e) => {
+        e.preventDefault();
+        logout();
       });
     </script>
 
